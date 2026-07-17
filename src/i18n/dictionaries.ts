@@ -94,17 +94,17 @@ const hr = {
 			},
 			{
 				name: "SEPA nalog (HR banke)",
-				fee: "0,25–0,40 € fiksno — plaća pošiljatelj",
-				at2: "0,40 € · do 20%",
-				at5: "0,40 € · do 8%",
-				at100: "0,40 € · 0,4%",
+				fee: "0,25–0,45 € fiksno — plaća pošiljatelj",
+				at2: "do 0,45 € · do 22,5%",
+				at5: "do 0,45 € · do 9%",
+				at100: "do 0,45 € · 0,45%",
 				tone: "warn" as const,
 			},
 		],
 		points: [
 			{
 				title: "Fiksna naknada ubija mikrouplate",
-				text: "Na uplati od 2 € kartična naknada iznosi 14%, a fiksni bankovni nalog i do 20%. Male, česte uplate — upravo one od kojih živi lokalna maloprodaja — danas su najskuplje. Jedino transfer bez fiksnog dijela ni na jednoj strani čini mikrouplate isplativima.",
+				text: "Na uplati od 2 € kartična naknada iznosi 14%, a fiksni bankovni nalog i do 22,5%. Male, česte uplate — upravo one od kojih živi lokalna maloprodaja — danas su najskuplje. Jedino transfer bez fiksnog dijela ni na jednoj strani čini mikrouplate isplativima.",
 			},
 			{
 				title: "Novac ostaje u lokalnoj ekonomiji",
@@ -137,8 +137,7 @@ const hr = {
 		yearly: "Godišnje",
 		vsCard: "vs. kartica",
 		vsSepa: "vs. SEPA nalog",
-		upTo: "do",
-		note: "Kartica: 1,5% + 0,25 € po transakciji (Stripe EEA). SEPA: fiksni nalog do 0,40 € (HR banke, plaća pošiljatelj). Mjesec = 30 dana, godina = 365.",
+		note: "Kartica: 1,5% + 0,25 € po transakciji (Stripe EEA). SEPA: fiksni nalog 0,25–0,45 € po transakciji (HR banke, plaća pošiljatelj). Mjesec = 30 dana, godina = 365.",
 	},
 	sim: {
 		title: "Simulacije korak po korak",
@@ -279,17 +278,17 @@ const en: typeof hr = {
 			},
 			{
 				name: "SEPA order (Croatian banks)",
-				fee: "€0.25–0.40 fixed — paid by the sender",
-				at2: "€0.40 · up to 20%",
-				at5: "€0.40 · up to 8%",
-				at100: "€0.40 · 0.4%",
+				fee: "€0.25–0.45 fixed — paid by the sender",
+				at2: "up to €0.45 · up to 22.5%",
+				at5: "up to €0.45 · up to 9%",
+				at100: "up to €0.45 · 0.45%",
 				tone: "warn" as const,
 			},
 		],
 		points: [
 			{
 				title: "Fixed fees kill micropayments",
-				text: "On a €2 payment the card fee is 14%, and the fixed bank order up to 20%. Small, frequent payments — exactly what local retail lives on — are the most expensive today. Only a transfer with no fixed component on either side makes micropayments viable.",
+				text: "On a €2 payment the card fee is 14%, and the fixed bank order up to 22.5%. Small, frequent payments — exactly what local retail lives on — are the most expensive today. Only a transfer with no fixed component on either side makes micropayments viable.",
 			},
 			{
 				title: "Money stays in the local economy",
@@ -322,8 +321,7 @@ const en: typeof hr = {
 		yearly: "Yearly",
 		vsCard: "vs. card",
 		vsSepa: "vs. SEPA order",
-		upTo: "up to",
-		note: "Card: 1.5% + €0.25 per transaction (Stripe EEA). SEPA: fixed order up to €0.40 (Croatian banks, paid by the sender). Month = 30 days, year = 365.",
+		note: "Card: 1.5% + €0.25 per transaction (Stripe EEA). SEPA: fixed order €0.25–0.45 per transaction (Croatian banks, paid by the sender). Month = 30 days, year = 365.",
 	},
 	sim: {
 		title: "Step-by-step simulations",

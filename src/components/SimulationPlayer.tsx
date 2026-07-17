@@ -92,6 +92,20 @@ export default function SimulationPlayer({
 		setPlaying(false);
 	};
 
+	// which sponsor covered which steps so far — aggregated per payer, with counts
+	const sponsorBreakdown = useMemo(() => {
+		const byPayer = new Map<Exclude<FeePayer, "none">, Map<string, number>>();
+		for (const step of steps.slice(0, cursor + 1)) {
+			if (step.status !== "ok" || step.transition.feePayer === "none") continue;
+			const payer = step.transition.feePayer;
+			const label = step.transition.label[locale];
+			const counts = byPayer.get(payer) ?? new Map<string, number>();
+			counts.set(label, (counts.get(label) ?? 0) + 1);
+			byPayer.set(payer, counts);
+		}
+		return [...byPayer.entries()];
+	}, [steps, cursor, locale]);
+
 	const balances = useMemo(() => {
 		// before the first step all the money sits on the bank account
 		if (!current) return { bank: eur(locale, scenario.initialAmount) };
@@ -233,16 +247,25 @@ export default function SimulationPlayer({
 							{eur(locale, current?.userFeesTotal ?? 0)}
 						</span>
 					</div>
-					{current && Object.keys(current.sponsoredBy).length > 0 && (
-						<p className="text-[11px] leading-relaxed text-mute">
-							{labels.sponsoredBy}{" "}
-							{Object.entries(current.sponsoredBy)
-								.map(
-									([payer, count]) =>
-										`${labels.sponsorNames[payer as Exclude<FeePayer, "none">]} ×${count}`,
-								)
-								.join(" · ")}
-						</p>
+					{sponsorBreakdown.length > 0 && (
+						<div className="rounded-2xl border border-line bg-white px-4 py-3">
+							<p className="text-[11px] font-bold uppercase tracking-wider text-mute">
+								{labels.sponsoredBy}
+							</p>
+							<div className="mt-1.5 space-y-1.5">
+								{sponsorBreakdown.map(([payer, counts]) => (
+									<p key={payer} className="text-[11px] leading-relaxed">
+										<span className="font-semibold text-ink">{labels.sponsorNames[payer]}</span>{" "}
+										<span className="text-mute">
+											—{" "}
+											{[...counts.entries()]
+												.map(([label, count]) => (count > 1 ? `${label} ×${count}` : label))
+												.join(" · ")}
+										</span>
+									</p>
+								))}
+							</div>
+						</div>
 					)}
 
 					{/* what the same payment costs today via the incumbent channels */}

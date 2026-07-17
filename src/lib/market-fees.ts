@@ -5,7 +5,8 @@
  * vendored in ~/git/ss/ss-novcanik-prototip/docs/compliance/isplativost-wallet.md):
  *  - card: Stripe EEA domestic card pricing, July 2026 — 1.5% + €0.25 per transaction
  *  - SEPA: typical fixed per-order SENDER fee at classic Croatian banks
- *    (ZABA, PBZ, Erste, OTP, HPB) — €0.25–0.40, depending on package/channel
+ *    (ZABA, PBZ, Erste, OTP, HPB) — €0.25–0.45 per transaction, depending on
+ *    package/channel (range per Matija, 2026-07: real single-transaction costs)
  *
  * These are comparison inputs only — the MPT rail itself charges the user €0.
  * The fixed component is what kills micropayments: on a €2 payment the card fee
@@ -16,7 +17,7 @@ export const CARD_FEE_PCT = 0.015;
 export const CARD_FEE_FIXED = 0.25;
 
 export const SEPA_FEE_MIN = 0.25;
-export const SEPA_FEE_MAX = 0.4;
+export const SEPA_FEE_MAX = 0.45;
 
 /** card-processor fee on a single payment (Stripe EEA domestic) */
 export const cardFee = (amount: number) => amount * CARD_FEE_PCT + CARD_FEE_FIXED;
