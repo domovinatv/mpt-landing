@@ -8,19 +8,32 @@ import type { Locale } from "@/i18n/config";
  *  - the step-by-step landing simulations
  *  - the vitest simulations proving the invariants
  *
+ * Verified against the reference implementation and its vendored docs:
+ *  - pay.domovina.ai `docs/monerium-private.md` (Monerium Private API SSOT)
+ *  - pay.domovina.ai `docs/plans/gnosis-pay-cards/` (Gnosis Pay integration plan)
+ *  - pay.domovina.ai `backend/` (worker `pay-domovina-backend`: webhook receiver,
+ *    reference parser `monerium/sid.ts`, Zodiac forward `router/safe.ts`,
+ *    payment intents `intents/`)
+ *
  * Modeled rails:
- *  main rail   : HR bank -> (card, Apple/Google Pay, min 10 €, paid by Revolut)
- *                -> Revolut LT IBAN -> (SEPA Instant, EPC QR, allowlist prompt,
- *                min 1 €, paid by Revolut, reference = target onchain address)
- *                -> Monerium EE IBAN -> verify -> mint EURe 1:1
- *                -> Gnosis Safe multisig relayer -> (mpt-main-rail on Cloudflare
- *                Workers, sponsored onchain tx, gas paid by MPT) -> user address
+ *  main rail   : HR bank -> (card, Apple/Google Pay, min 10 € Revolut product
+ *                limit, card tx paid by Revolut) -> Revolut LT IBAN
+ *                -> (SEPA Instant, EPC QR, allowlist prompt, min 1 € Revolut
+ *                product limit, paid by Revolut, reference `mpt:0x<addr>?sid=<id>`)
+ *                -> Monerium EE IBAN (issue order: placed -> pending -> processed)
+ *                -> 1:1 EURe mint to the MPT main-rail Safe (2/3 multisig,
+ *                Monerium default wallet) -> backend worker `pay-domovina-backend`
+ *                forwards via the Zodiac Roles module (EUReForwarder role,
+ *                constrained router EOA pays gas) -> user address
  *  after rail  : P2P onchain transfers, MPT checkout intents
- *                (pay.domovina.ai / donate.domovina.ai)
- *  off-ramp    : own Monerium account (KYC/KYB) -> free SEPA Instant back to
- *                any European bank (PBZ/ZABA/OTP/Erste/HPB/...) — circle closed
- *  alt branch  : Gnosis Pay VISA (virtual free, physical optional, optional
- *                Monerium IBAN) topped up from Revolut for free, spend by card
+ *                (pending -> paid on onchain confirmation | expired;
+ *                > 0 € and <= 10 000 € per intent) — production: pay.domovina.ai
+ *  off-ramp    : own Monerium account (KYC/KYB) -> signed redeem -> free SEPA
+ *                Instant back to any European bank — circle closed
+ *  alt branch  : Gnosis Pay VISA (pre-pilot plan): GP deploys its OWN Safe per
+ *                user (Two-Safe model, Delay + Roles modules), Sumsub KYC,
+ *                virtual card free; funding = plain EURe transfer from the
+ *                user's Safe over the existing sponsored rail
  */
 
 export type L10n = Record<Locale, string>;
@@ -57,7 +70,7 @@ export type EdgeId =
 	| "e-relay"
 	| "e-p2p"
 	| "e-checkout"
-	| "e-gp-topup"
+	| "e-gp-fund"
 	| "e-gp-spend"
 	| "e-redeem"
 	| "e-offramp";
@@ -82,7 +95,7 @@ export type TransitionId =
 	| "onchainTransfer"
 	| "payCheckoutIntent"
 	| "issueGnosisPayVisa"
-	| "topupGnosisPayFromRevolut"
+	| "fundGnosisPay"
 	| "gnosisPayCardSpend"
 	| "openMoneriumKyc"
 	| "redeemEure"
@@ -101,6 +114,7 @@ export interface Transition {
 	feePayer: FeePayer;
 	feeNote: L10n;
 	minAmount?: number;
+	maxAmount?: number;
 	/** process events don't move money (KYC, card issuance, checks, QR scan) */
 	movesMoney: boolean;
 }
@@ -161,20 +175,20 @@ export const nodes: FlowNode[] = [
 	},
 	{
 		id: "moneriumMpt",
-		title: { hr: "Monerium (MPT račun)", en: "Monerium (MPT account)" },
+		title: { hr: "Monerium (MPT IBAN)", en: "Monerium (MPT IBAN)" },
 		subtitle: {
-			hr: "Estonski IBAN · licencirani EMI · provjera uplate i mint EURe 1:1",
-			en: "Estonian IBAN · licensed EMI · payment verification and 1:1 EURe mint",
+			hr: "Estonski IBAN · licencirani EMI · issue order: placed → pending → processed",
+			en: "Estonian IBAN · licensed EMI · issue order: placed → pending → processed",
 		},
 		x: 0,
 		y: 460,
 	},
 	{
 		id: "safeRelayer",
-		title: { hr: "Gnosis Safe multisig relayer", en: "Gnosis Safe multisig relayer" },
+		title: { hr: "MPT main-rail Safe", en: "MPT main-rail Safe" },
 		subtitle: {
-			hr: "Default mint account · mpt-main-rail na Cloudflare Workers čita adresu iz SEPA reference",
-			en: "Default mint account · mpt-main-rail on Cloudflare Workers reads the address from the SEPA reference",
+			hr: "2/3 multisig, Moneriumov default wallet · backend worker forwarda kroz Zodiac Roles modul",
+			en: "2/3 multisig, Monerium default wallet · backend worker forwards via the Zodiac Roles module",
 		},
 		badge: { hr: "MPT rail", en: "MPT rail" },
 		x: 0,
@@ -206,8 +220,8 @@ export const nodes: FlowNode[] = [
 		id: "merchant",
 		title: { hr: "Trgovac / primatelj", en: "Merchant / payee" },
 		subtitle: {
-			hr: "MPT checkout intenti — već u produkciji: pay.domovina.ai · donate.domovina.ai",
-			en: "MPT checkout intents — already in production: pay.domovina.ai · donate.domovina.ai",
+			hr: "MPT checkout intenti (pending → paid → expired) — produkcija: pay.domovina.ai",
+			en: "MPT checkout intents (pending → paid → expired) — production: pay.domovina.ai",
 		},
 		x: 360,
 		y: 920,
@@ -215,10 +229,10 @@ export const nodes: FlowNode[] = [
 	},
 	{
 		id: "gnosisPay",
-		title: { hr: "Gnosis Pay VISA", en: "Gnosis Pay VISA" },
+		title: { hr: "Gnosis Pay VISA (GP Safe)", en: "Gnosis Pay VISA (GP Safe)" },
 		subtitle: {
-			hr: "Virtualna kartica besplatna, fizička opcionalno · opcionalni Monerium IBAN · top-up iz Revoluta 0 €",
-			en: "Virtual card free, physical optional · optional Monerium IBAN · top-up from Revolut €0",
+			hr: "GP deploya vlastiti Safe (Delay + Roles moduli) · virtualna kartica besplatna · Sumsub KYC · Apple/Google Pay u HR — integracija u pripremi",
+			en: "GP deploys its own Safe (Delay + Roles modules) · virtual card free · Sumsub KYC · Apple/Google Pay in HR — integration in preparation",
 		},
 		x: 360,
 		y: 1150,
@@ -228,8 +242,8 @@ export const nodes: FlowNode[] = [
 		id: "ownMonerium",
 		title: { hr: "Vlastiti Monerium račun", en: "Own Monerium account" },
 		subtitle: {
-			hr: "KYC/KYB · besplatan redeem EURe natrag u eure na IBAN-u",
-			en: "KYC/KYB · free EURe redeem back to euros on an IBAN",
+			hr: "KYC/KYB · potpisani redeem — EURe natrag u eure 1:1 (≥ 15.000 € traži dokument)",
+			en: "KYC/KYB · signed redeem — EURe back to euros 1:1 (≥ €15,000 needs a document)",
 		},
 		x: 0,
 		y: 1150,
@@ -257,8 +271,8 @@ export const edges: FlowEdge[] = [
 		source: "hrBank",
 		target: "revolut",
 		label: {
-			hr: "Apple Pay / Google Pay · min 10 € · 0 € (plaća Revolut)",
-			en: "Apple Pay / Google Pay · min €10 · €0 (Revolut pays)",
+			hr: "Apple Pay / Google Pay · min 10 € (Revolutov limit) · 0 € (plaća Revolut)",
+			en: "Apple Pay / Google Pay · min €10 (Revolut limit) · €0 (Revolut pays)",
 		},
 	},
 	{
@@ -266,23 +280,26 @@ export const edges: FlowEdge[] = [
 		source: "revolut",
 		target: "moneriumMpt",
 		label: {
-			hr: "SEPA Instant · EPC QR · referenca = onchain adresa · min 1 € · 0 € (plaća Revolut)",
-			en: "SEPA Instant · EPC QR · reference = onchain address · min €1 · €0 (Revolut pays)",
+			hr: "SEPA Instant · EPC QR · referenca mpt:0x…?sid=… · 0 € (plaća Revolut)",
+			en: "SEPA Instant · EPC QR · reference mpt:0x…?sid=… · €0 (Revolut pays)",
 		},
 	},
 	{
 		id: "e-mint",
 		source: "moneriumMpt",
 		target: "safeRelayer",
-		label: { hr: "provjera uplate · mint EURe 1:1", en: "payment verification · 1:1 EURe mint" },
+		label: {
+			hr: "issue order processed · mint EURe 1:1 (~5–15 s)",
+			en: "issue order processed · 1:1 EURe mint (~5–15 s)",
+		},
 	},
 	{
 		id: "e-relay",
 		source: "safeRelayer",
 		target: "userAddress",
 		label: {
-			hr: "sponzorirana onchain transakcija · gas plaća MPT",
-			en: "sponsored onchain transaction · gas paid by MPT",
+			hr: "Zodiac Roles forward · gas plaća MPT router",
+			en: "Zodiac Roles forward · gas paid by the MPT router",
 		},
 	},
 	{
@@ -296,16 +313,19 @@ export const edges: FlowEdge[] = [
 		id: "e-checkout",
 		source: "userAddress",
 		target: "merchant",
-		label: { hr: "checkout intent · MPT relayer", en: "checkout intent · MPT relayer" },
+		label: {
+			hr: "checkout intent · paid na onchain potvrdi",
+			en: "checkout intent · paid on onchain confirmation",
+		},
 		lateral: true,
 	},
 	{
-		id: "e-gp-topup",
-		source: "revolut",
+		id: "e-gp-fund",
+		source: "userAddress",
 		target: "gnosisPay",
 		label: {
-			hr: "alternativna grana: top-up Gnosis Pay kartice · 0 €",
-			en: "alternative branch: Gnosis Pay card top-up · €0",
+			hr: "punjenje kartice = EURe transfer na GP Safe · 0 €",
+			en: "card funding = EURe transfer to the GP Safe · €0",
 		},
 		lateral: true,
 	},
@@ -313,14 +333,17 @@ export const edges: FlowEdge[] = [
 		id: "e-gp-spend",
 		source: "gnosisPay",
 		target: "merchant",
-		label: { hr: "plaćanje VISA karticom", en: "VISA card payment" },
+		label: {
+			hr: "VISA autorizacija kroz Roles modul (< 2 s)",
+			en: "VISA authorization via the Roles module (< 2 s)",
+		},
 		lateral: true,
 	},
 	{
 		id: "e-redeem",
 		source: "userAddress",
 		target: "ownMonerium",
-		label: { hr: "KYC/KYB · redeem EURe", en: "KYC/KYB · EURe redeem" },
+		label: { hr: "KYC/KYB · potpisani redeem EURe", en: "KYC/KYB · signed EURe redeem" },
 	},
 	{
 		id: "e-offramp",
@@ -345,8 +368,8 @@ export const transitions: Transition[] = [
 		edge: "e-card",
 		label: { hr: "Kartični top-up na Revolut", en: "Card top-up to Revolut" },
 		description: {
-			hr: "Debitnom karticom hrvatske banke (Mastercard/VISA) preko Apple Paya ili Google Paya korisnik napuni Revolut. S HR IBAN-a odlazi puni iznos i puni iznos stiže na litavski IBAN.",
-			en: "Using a Croatian bank debit card (Mastercard/VISA) via Apple Pay or Google Pay, the user tops up Revolut. The full amount leaves the HR IBAN and the full amount arrives on the Lithuanian IBAN.",
+			hr: "Debitnom karticom hrvatske banke (Mastercard/VISA) preko Apple Paya ili Google Paya korisnik napuni Revolut. S HR IBAN-a odlazi puni iznos i puni iznos stiže na litavski IBAN. Minimum od 10 € je Revolutovo produktno pravilo.",
+			en: "Using a Croatian bank debit card (Mastercard/VISA) via Apple Pay or Google Pay, the user tops up Revolut. The full amount leaves the HR IBAN and the full amount arrives on the Lithuanian IBAN. The €10 minimum is a Revolut product rule.",
 		},
 		feePayer: "revolut",
 		feeNote: {
@@ -363,8 +386,8 @@ export const transitions: Transition[] = [
 		edge: "e-sepa",
 		label: { hr: "Skeniranje EPC QR koda", en: "Scan the EPC QR code" },
 		description: {
-			hr: "U Revolutu korisnik skenira EPC QR kod primatelja (ili ručno unese IBAN). SEPA plaćanje je po defaultu SEPA Instant.",
-			en: "In Revolut the user scans the payee's EPC QR code (or enters the IBAN manually). SEPA payments default to SEPA Instant.",
+			hr: "U Revolutu korisnik skenira EPC QR kod (EPC069-12, strogi 10-linijski format usklađen baš s Revolutovim skenerom) ili ručno unese IBAN. SEPA plaćanje je po defaultu SEPA Instant.",
+			en: "In Revolut the user scans the EPC QR code (EPC069-12, the strict 10-line layout tuned for Revolut's scanner) or enters the IBAN manually. SEPA payments default to SEPA Instant.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Procesni korak — ništa se ne naplaćuje.", en: "Process step — nothing is charged." },
@@ -405,8 +428,8 @@ export const transitions: Transition[] = [
 		edge: "e-sepa",
 		label: { hr: "SEPA Instant prema Moneriumu", en: "SEPA Instant to Monerium" },
 		description: {
-			hr: "Brza SEPA Instant transakcija na Moneriumov estonski IBAN. U referenci plaćanja piše onchain adresa na koju primljeni novac treba dalje otići — po tome mpt-main-rail zna kamo preusmjeriti.",
-			en: "A fast SEPA Instant transaction to Monerium's Estonian IBAN. The payment reference carries the onchain address the received money should continue to — that's how mpt-main-rail knows where to reroute.",
+			hr: "SEPA Instant na Moneriumov estonski IBAN. U referenci plaćanja piše kamo novac dalje ide: mpt:0x<adresa>?sid=<id> (podržani su i gnosis:0x…, cmp:0x… za kampanje i gola 0x adresa). SEPA charset pretvara '=' u '.', pa parser tolerira oba oblika. Minimum od 1 € je Revolutovo pravilo.",
+			en: "SEPA Instant to Monerium's Estonian IBAN. The payment reference says where the money goes next: mpt:0x<address>?sid=<id> (gnosis:0x…, cmp:0x… for campaigns and a bare 0x address are also supported). The SEPA charset maps '=' to '.', so the parser tolerates both forms. The €1 minimum is a Revolut rule.",
 		},
 		feePayer: "revolut",
 		feeNote: { hr: "SEPA transakciju plaća Revolut.", en: "Revolut pays the SEPA transaction." },
@@ -418,10 +441,10 @@ export const transitions: Transition[] = [
 		from: "moneriumMpt",
 		to: "moneriumMpt",
 		edge: "e-mint",
-		label: { hr: "Monerium provjerava uplatu", en: "Monerium verifies the payment" },
+		label: { hr: "Monerium obrađuje issue order", en: "Monerium processes the issue order" },
 		description: {
-			hr: "Monerium zaprimi uplatu i radi provjeru primljene uplate prije mintanja.",
-			en: "Monerium receives the payment and verifies it before minting.",
+			hr: "Kad SEPA stigne na IBAN, Monerium automatski kreira issue order (placed → pending → processed). Webhook order.created stiže backendu 4–5 s nakon SEPA Instant uplate.",
+			en: "When the SEPA arrives on the IBAN, Monerium automatically creates an issue order (placed → pending → processed). The order.created webhook reaches the backend 4–5 s after the SEPA Instant payment.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Procesni korak — ništa se ne naplaćuje.", en: "Process step — nothing is charged." },
@@ -434,8 +457,8 @@ export const transitions: Transition[] = [
 		edge: "e-mint",
 		label: { hr: "Mint EURe 1:1", en: "1:1 EURe mint" },
 		description: {
-			hr: "Nakon provjere Monerium minta EURe (1:1 s eurom) na default account — Gnosis Safe multisig relayer.",
-			en: "After verification Monerium mints EURe (1:1 with the euro) to the default account — the Gnosis Safe multisig relayer.",
+			hr: "Monerium minta EURe (1:1 s eurom) na svoj default wallet — MPT main-rail Safe (2/3 multisig) na Gnosis Chainu. Onchain mint se potvrdi tipično 5–15 s nakon uplate.",
+			en: "Monerium mints EURe (1:1 with the euro) to its default wallet — the MPT main-rail Safe (a 2/3 multisig) on Gnosis Chain. The onchain mint confirms typically 5–15 s after the payment.",
 		},
 		feePayer: "monerium",
 		feeNote: { hr: "Mint je besplatan.", en: "Minting is free." },
@@ -446,13 +469,13 @@ export const transitions: Transition[] = [
 		from: "safeRelayer",
 		to: "userAddress",
 		edge: "e-relay",
-		label: { hr: "MPT relayer preusmjerava EURe", en: "MPT relayer reroutes the EURe" },
+		label: { hr: "Backend forwarda EURe s Safea", en: "The backend forwards the EURe from the Safe" },
 		description: {
-			hr: "mpt-main-rail (Cloudflare Workers) pročita adresu iz SEPA reference i pošalje EURe jeftinom sponzoriranom onchain transakcijom na korisnikovu Gnosis adresu.",
-			en: "mpt-main-rail (Cloudflare Workers) reads the address from the SEPA reference and sends the EURe via a cheap sponsored onchain transaction to the user's Gnosis address.",
+			hr: "Backend worker (pay-domovina-backend na Cloudflare Workers) na webhook 'processed' pročita adresu iz reference i izvrši transfer kroz Zodiac Roles modul (rola EUReForwarder — smije samo EURe.transfer). Potpisuje ograničeni router EOA koji plaća gas. Ako referenca nema adresu, sredstva ostaju parkirana na Safeu.",
+			en: "On the 'processed' webhook, the backend worker (pay-domovina-backend on Cloudflare Workers) reads the address from the reference and executes the transfer through the Zodiac Roles module (EUReForwarder role — allowed only EURe.transfer). A constrained router EOA signs and pays the gas. If the reference carries no address, the funds stay parked in the Safe.",
 		},
 		feePayer: "mpt",
-		feeNote: { hr: "Gas sponzorira MPT — dijelić centa.", en: "Gas sponsored by MPT — a fraction of a cent." },
+		feeNote: { hr: "Gas plaća MPT-ov router EOA — dijelić centa.", en: "Gas is paid by the MPT router EOA — a fraction of a cent." },
 		movesMoney: true,
 	},
 	{
@@ -462,13 +485,13 @@ export const transitions: Transition[] = [
 		edge: "e-p2p",
 		label: { hr: "Onchain transfer", en: "Onchain transfer" },
 		description: {
-			hr: "Korisnik slobodno raspolaže EURe — može raditi više onchain transakcija na Gnosis Chainu prema bilo kojoj adresi.",
-			en: "The user freely controls the EURe — multiple onchain transactions on Gnosis Chain to any address.",
+			hr: "Korisnik slobodno raspolaže EURe — može raditi više onchain transakcija na Gnosis Chainu prema bilo kojoj adresi. Wallet relayer sponzorira gas (limit 5 besplatnih dnevno po potpisniku).",
+			en: "The user freely controls the EURe — multiple onchain transactions on Gnosis Chain to any address. The wallet relayer sponsors gas (limit of 5 free per signer per day).",
 		},
-		feePayer: "none",
+		feePayer: "mpt",
 		feeNote: {
-			hr: "Gas na Gnosis Chainu je zanemariv (dijelić centa).",
-			en: "Gas on Gnosis Chain is negligible (a fraction of a cent).",
+			hr: "Gas sponzorira MPT wallet relayer — dijelić centa.",
+			en: "Gas sponsored by the MPT wallet relayer — a fraction of a cent.",
 		},
 		movesMoney: true,
 	},
@@ -479,39 +502,40 @@ export const transitions: Transition[] = [
 		edge: "e-checkout",
 		label: { hr: "Plaćanje checkout intenta", en: "Pay a checkout intent" },
 		description: {
-			hr: "MPT relayer podržava izradu checkout intenta — plaćanje trgovcu ili primatelju. Već implementirano i u produkciji na pay.domovina.ai i donate.domovina.ai.",
-			en: "The MPT relayer supports checkout intents — paying a merchant or payee. Already implemented and in production at pay.domovina.ai and donate.domovina.ai.",
+			hr: "Checkout intent (stanja pending → paid → expired) veže iznos, primatelja i sid. Guardovi u kodu: iznos > 0 €, max 10.000 € po intentu, TTL default 15 min. 'Paid' se upisuje tek na onchain potvrdi transfera. U produkciji na pay.domovina.ai.",
+			en: "A checkout intent (states pending → paid → expired) binds the amount, payee and sid. Code guards: amount > €0, max €10,000 per intent, default TTL 15 min. 'Paid' is recorded only on onchain confirmation of the transfer. In production at pay.domovina.ai.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Bez naknade za korisnika.", en: "No fee for the user." },
+		maxAmount: 10000,
 		movesMoney: true,
 	},
 	{
 		id: "issueGnosisPayVisa",
 		from: null,
 		to: null,
-		edge: "e-gp-topup",
+		edge: "e-gp-fund",
 		label: { hr: "Izdavanje Gnosis Pay VISA kartice", en: "Gnosis Pay VISA card issuance" },
 		description: {
-			hr: "Gnosis Pay izdaje vlastite VISA kartice — virtualna je besplatna, fizička opcionalna, uz opcionalni Monerium IBAN. Sve to već radi.",
-			en: "Gnosis Pay issues its own VISA cards — the virtual card is free, physical optional, with an optional Monerium IBAN. All of this works today.",
+			hr: "Gnosis Pay deploya korisniku VLASTITI GP Safe (vlasništvo spaljeno, kontrola kroz Delay modul uz 3-min cooldown) i izdaje besplatnu virtualnu VISA karticu (max 5, instantno aktivirana). Obavezan je GP-ov Sumsub KYC; opcionalan osobni Monerium IBAN. Apple Pay / Google Pay rade u HR (ručni unos kartice). Status: pre-pilot integracija u pripremi.",
+			en: "Gnosis Pay deploys the user's OWN GP Safe (ownership burned, control via the Delay module with a 3-min cooldown) and issues a free virtual VISA card (max 5, instantly activated). GP's Sumsub KYC is mandatory; a personal Monerium IBAN is optional. Apple Pay / Google Pay work in Croatia (manual card entry). Status: pre-pilot integration in preparation.",
 		},
 		feePayer: "gnosispay",
 		feeNote: { hr: "Virtualna kartica se izdaje besplatno.", en: "The virtual card is issued for free." },
 		movesMoney: false,
 	},
 	{
-		id: "topupGnosisPayFromRevolut",
-		from: "revolut",
+		id: "fundGnosisPay",
+		from: "userAddress",
 		to: "gnosisPay",
-		edge: "e-gp-topup",
-		label: { hr: "Top-up Gnosis Pay kartice iz Revoluta", en: "Gnosis Pay card top-up from Revolut" },
+		edge: "e-gp-fund",
+		label: { hr: "Punjenje Gnosis Pay kartice", en: "Fund the Gnosis Pay card" },
 		description: {
-			hr: "Korisnik Gnosis Pay VISA karticu (virtualnu ili fizičku) doda u svoj Revolut račun i iz njega napravi top-up — opet besplatno za korisnika.",
-			en: "The user adds the Gnosis Pay VISA card (virtual or physical) to their Revolut account and tops it up from there — again free for the user.",
+			hr: "Punjenje kartice je običan EURe transfer s korisnikove adrese na GP Safe — ide postojećim sponzoriranim railom bez ijedne izmjene. Povlačenje natrag je gasless uz 3-min delay.",
+			en: "Funding the card is a plain EURe transfer from the user's address to the GP Safe — over the existing sponsored rail with no changes. Withdrawing back is gasless with a 3-min delay.",
 		},
-		feePayer: "revolut",
-		feeNote: { hr: "Top-up je za korisnika 0 €.", en: "The top-up costs the user €0." },
+		feePayer: "mpt",
+		feeNote: { hr: "Gas sponzorira MPT relayer — za korisnika 0 €.", en: "Gas sponsored by the MPT relayer — €0 for the user." },
 		movesMoney: true,
 	},
 	{
@@ -521,8 +545,8 @@ export const transitions: Transition[] = [
 		edge: "e-gp-spend",
 		label: { hr: "Plaćanje Gnosis Pay VISA karticom", en: "Pay with the Gnosis Pay VISA card" },
 		description: {
-			hr: "Korisnik plaća VISA karticom iz svojeg EURe salda — bilo gdje gdje se VISA prima.",
-			en: "The user pays by VISA card from their EURe balance — anywhere VISA is accepted.",
+			hr: "VISA autorizacija ide kroz Roles modul (scoped spender) — instantno onchain, ukupno < 2 s na POS-u; clearing prema trgovcu 24–48 h. Dnevni limit default 350 EURe (raspon 1–8000).",
+			en: "The VISA authorization goes through the Roles module (scoped spender) — instant onchain, < 2 s total at the POS; merchant clearing in 24–48 h. Daily limit defaults to 350 EURe (range 1–8000).",
 		},
 		feePayer: "gnosispay",
 		feeNote: { hr: "Bez naknade za korisnika.", en: "No fee for the user." },
@@ -535,8 +559,8 @@ export const transitions: Transition[] = [
 		edge: "e-redeem",
 		label: { hr: "Otvaranje vlastitog Monerium računa", en: "Open an own Monerium account" },
 		description: {
-			hr: "Za off-ramp korisnik otvori vlastiti Monerium račun uz KYC/KYB provjeru.",
-			en: "For the off-ramp the user opens their own Monerium account with KYC/KYB verification.",
+			hr: "Za off-ramp korisnik otvori vlastiti Monerium račun uz KYC/KYB provjeru i poveže svoju adresu (potpisom fiksne poruke o vlasništvu adrese).",
+			en: "For the off-ramp the user opens their own Monerium account with KYC/KYB verification and links their address (by signing the fixed address-ownership message).",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Otvaranje računa je besplatno.", en: "Opening the account is free." },
@@ -547,10 +571,10 @@ export const transitions: Transition[] = [
 		from: "userAddress",
 		to: "ownMonerium",
 		edge: "e-redeem",
-		label: { hr: "Redeem EURe na vlastitom računu", en: "Redeem EURe on the own account" },
+		label: { hr: "Potpisani redeem EURe", en: "Signed EURe redeem" },
 		description: {
-			hr: "Korisnik pošalje EURe na svoj Monerium račun — EURe se otkupljuje 1:1 natrag u eure.",
-			en: "The user sends EURe to their Monerium account — EURe is redeemed 1:1 back into euros.",
+			hr: "Korisnik potpiše redeem nalog porukom iz svojeg walleta (EOA ili smart account preko EIP-1271) — EURe se otkupljuje 1:1 natrag u eure. Nalozi od 15.000 € i više traže popratni dokument.",
+			en: "The user signs the redeem order with a message from their wallet (EOA or smart account via EIP-1271) — EURe is redeemed 1:1 back into euros. Orders of €15,000 and above require a supporting document.",
 		},
 		feePayer: "monerium",
 		feeNote: { hr: "Redeem je besplatan.", en: "Redeem is free." },
@@ -608,8 +632,8 @@ export const scenarios: Scenario[] = [
 		id: "full-circle",
 		name: { hr: "2 · Puni krug: banka → banka", en: "2 · Full circle: bank → bank" },
 		description: {
-			hr: "Cijeli krug: on-ramp, KYC na vlastitom Monerium računu i besplatni SEPA Instant off-ramp natrag u banku. 50 € ode — 50 € se vrati.",
-			en: "The whole circle: on-ramp, KYC on an own Monerium account and a free SEPA Instant off-ramp back to the bank. €50 leaves — €50 comes back.",
+			hr: "Cijeli krug: on-ramp, KYC na vlastitom Monerium računu, potpisani redeem i besplatni SEPA Instant off-ramp natrag u banku. 50 € ode — 50 € se vrati.",
+			en: "The whole circle: on-ramp, KYC on an own Monerium account, a signed redeem and a free SEPA Instant off-ramp back to the bank. €50 leaves — €50 comes back.",
 		},
 		initialAmount: 50,
 		steps: [
@@ -637,8 +661,8 @@ export const scenarios: Scenario[] = [
 		id: "checkout",
 		name: { hr: "4 · MPT checkout intent", en: "4 · MPT checkout intent" },
 		description: {
-			hr: "Plaćanje trgovcu preko MPT checkout intenta — kao u produkciji na pay.domovina.ai i donate.domovina.ai.",
-			en: "Paying a merchant through an MPT checkout intent — as live in production at pay.domovina.ai and donate.domovina.ai.",
+			hr: "Plaćanje trgovcu preko MPT checkout intenta (pending → paid na onchain potvrdi) — u produkciji na pay.domovina.ai.",
+			en: "Paying a merchant through an MPT checkout intent (pending → paid on onchain confirmation) — in production at pay.domovina.ai.",
 		},
 		initialAmount: 25,
 		steps: [...onramp(25), { t: "payCheckoutIntent", amount: 25 }],
@@ -647,14 +671,14 @@ export const scenarios: Scenario[] = [
 		id: "gnosis-pay",
 		name: { hr: "5 · Gnosis Pay VISA grana", en: "5 · Gnosis Pay VISA branch" },
 		description: {
-			hr: "Alternativna grana: besplatna virtualna VISA, top-up kartice izravno iz Revoluta i plaćanje karticom — bez Monerium koraka.",
-			en: "The alternative branch: free virtual VISA, card top-up straight from Revolut and a card payment — no Monerium hop.",
+			hr: "Alternativna grana (u pripremi): besplatna virtualna VISA na vlastitom GP Safeu, punjenje EURe transferom s korisnikove adrese i plaćanje karticom na POS-u.",
+			en: "The alternative branch (in preparation): a free virtual VISA on the user's own GP Safe, funded by an EURe transfer from the user's address, then a card payment at the POS.",
 		},
 		initialAmount: 25,
 		steps: [
+			...onramp(25),
 			{ t: "issueGnosisPayVisa" },
-			{ t: "cardTopup", amount: 25 },
-			{ t: "topupGnosisPayFromRevolut", amount: 25 },
+			{ t: "fundGnosisPay", amount: 25 },
 			{ t: "gnosisPayCardSpend", amount: 12.5 },
 		],
 	},
@@ -662,8 +686,8 @@ export const scenarios: Scenario[] = [
 		id: "guards",
 		name: { hr: "6 · Zaštitni limiti (guardovi)", en: "6 · Guard limits" },
 		description: {
-			hr: "Što odbijaju pravila: kartični top-up ispod 10 € i SEPA prema Moneriumu ispod 1 € se odbijaju, zatim ispravni iznosi prolaze.",
-			en: "What the rules reject: a card top-up below €10 and a SEPA to Monerium below €1 get rejected, then valid amounts pass.",
+			hr: "Što odbijaju pravila: kartični top-up ispod 10 € i SEPA ispod 1 € (Revolutovi produktni limiti) se odbijaju, zatim ispravni iznosi prolaze. MPT-ov vlastiti guard: intent max 10.000 €.",
+			en: "What the rules reject: a card top-up below €10 and a SEPA below €1 (Revolut product limits) get rejected, then valid amounts pass. MPT's own guard: intents max €10,000.",
 		},
 		initialAmount: 10,
 		steps: [
@@ -688,6 +712,11 @@ export const scenarios: Scenario[] = [
 const rejectBelowMin: L10n = {
 	hr: "Odbijeno: iznos je ispod minimalnog limita za ovaj korak.",
 	en: "Rejected: the amount is below this step's minimum limit.",
+};
+
+const rejectAboveMax: L10n = {
+	hr: "Odbijeno: iznos je iznad maksimalnog limita za ovaj korak.",
+	en: "Rejected: the amount is above this step's maximum limit.",
 };
 
 const rejectInsufficient: L10n = {
@@ -716,6 +745,9 @@ export function simulate(scenario: Scenario): SimStep[] {
 			if (t.minAmount !== undefined && amount < t.minAmount) {
 				status = "rejected";
 				rejectReason = rejectBelowMin;
+			} else if (t.maxAmount !== undefined && amount > t.maxAmount) {
+				status = "rejected";
+				rejectReason = rejectAboveMax;
 			} else if (balances[t.from] + 1e-9 < amount) {
 				status = "rejected";
 				rejectReason = rejectInsufficient;

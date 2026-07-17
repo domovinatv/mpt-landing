@@ -35,28 +35,29 @@ const hr = {
 			{
 				num: "01",
 				title: "Kartični top-up na Revolut — 0 €",
-				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya korisnik prebaci min. 10 € na svoj Revolut. S hrvatskog IBAN-a ode 10 € i na litavski IBAN stigne 10 € — kartičnu transakciju plaća Revolut kroz svoj marketing.",
+				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya korisnik napuni Revolut (min. 10 €, Revolutov produktni limit). S hrvatskog IBAN-a ode puni iznos i puni iznos stigne na litavski IBAN — kartičnu transakciju plaća Revolut kroz svoj marketing.",
 			},
 			{
 				num: "02",
 				title: "SEPA Instant prema Moneriumu — 0 €",
-				text: "Iz Revoluta ide SEPA plaćanje (po defaultu SEPA Instant, uz skeniranje EPC QR koda). Revolut pita želi li korisnik primatelja dodati na listu dozvoljenih računa, napravi interne provjere i pošalje min. 1 € na Moneriumov estonski IBAN — SEPA transakciju plaća Revolut. U referenci plaćanja piše onchain adresa na koju novac dalje treba otići.",
+				text: "Iz Revoluta ide SEPA Instant (uz skeniranje EPC QR koda; Revolut pita želi li korisnik primatelja na listu dozvoljenih računa, napravi interne provjere) na Moneriumov estonski IBAN — SEPA transakciju plaća Revolut. U referenci plaćanja piše kamo novac dalje ide: mpt:0x<adresa>?sid=<id>. Monerium na uplatu automatski kreira issue order (placed → pending → processed) — webhook stiže backendu za 4–5 sekundi.",
 			},
 			{
 				num: "03",
-				title: "Mint EURe i MPT relayer — 0 €",
-				text: "Monerium provjeri uplatu i minta EURe 1:1 na default account — Gnosis Safe multisig relayer. mpt-main-rail (Cloudflare Workers) pročita adresu iz reference i preusmjeri EURe jeftinom sponzoriranom onchain transakcijom na korisnikovu Gnosis adresu — gas plaća MPT.",
+				title: "Mint EURe i MPT forward — 0 €",
+				text: "Monerium minta EURe 1:1 na svoj default wallet — MPT main-rail Safe (2/3 multisig) na Gnosis Chainu. Backend worker (Cloudflare Workers) na webhook pročita adresu iz reference i izvrši transfer kroz Zodiac Roles modul (rola smije isključivo EURe.transfer) — potpisuje ograničeni router EOA koji plaća gas. Bez adrese u referenci sredstva ostaju sigurno parkirana na Safeu.",
 			},
 			{
 				num: "04",
 				title: "EURe kod korisnika i zatvaranje kruga — 0 €",
-				text: "Korisnik slobodno raspolaže EURe: onchain transakcije, MPT checkout intenti ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB) i Monerium besplatnim SEPA Instantom vrati novac na PBZ/ZABA/OTP/Erste/HPB ili bilo koju europsku banku. Krug je zatvoren, end-to-end 0 €.",
+				text: "Korisnik slobodno raspolaže EURe: onchain transakcije (gas sponzoriran), MPT checkout intenti (pending → paid na onchain potvrdi, max 10.000 € po intentu) ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB), potpiše redeem i Monerium besplatnim SEPA Instantom vrati novac na bilo koju europsku banku. Krug je zatvoren, end-to-end 0 €.",
 			},
 		],
-		altTitle: "Alternativna grana: Gnosis Pay VISA",
+		altTitle: "Alternativna grana: Gnosis Pay VISA (u pripremi)",
 		altText:
-			"Gnosis Pay izdaje vlastite VISA kartice — virtualne besplatno, fizičke opcionalno, uz opcionalni Monerium IBAN. Korisnik karticu doda u Revolut i top-up napravi izravno iz Revoluta — opet 0 € za korisnika, bez Monerium koraka.",
-		liveNote: "Sve navedeno već je implementirano i radi u produkciji:",
+			"Gnosis Pay korisniku deploya vlastiti GP Safe (Delay + Roles moduli) i izdaje besplatnu virtualnu VISA karticu — uz obavezan Sumsub KYC i opcionalni osobni Monerium IBAN. Punjenje kartice je običan EURe transfer s korisnikove adrese preko postojećeg sponzoriranog raila, a Apple Pay / Google Pay rade u Hrvatskoj. Integracija je u pre-pilot pripremi.",
+		liveNote:
+			"MPT rail i checkout intenti rade u produkciji na pay.domovina.ai; donate.domovina.ai je statični QR ulaz na isti rail:",
 		liveLinks: [
 			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
@@ -138,28 +139,29 @@ const en: typeof hr = {
 			{
 				num: "01",
 				title: "Card top-up to Revolut — €0",
-				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the user moves min. €10 to their Revolut. €10 leaves the Croatian IBAN and €10 arrives on the Lithuanian IBAN — Revolut pays the card transaction as part of its marketing.",
+				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the user tops up Revolut (min. €10, a Revolut product limit). The full amount leaves the Croatian IBAN and the full amount arrives on the Lithuanian IBAN — Revolut pays the card transaction as part of its marketing.",
 			},
 			{
 				num: "02",
 				title: "SEPA Instant to Monerium — €0",
-				text: "From Revolut a SEPA payment goes out (SEPA Instant by default, with EPC QR code scanning). Revolut asks whether to add the payee to the allowed-recipients list, runs internal checks and sends min. €1 to Monerium's Estonian IBAN — Revolut pays the SEPA transaction. The payment reference carries the onchain address the money should continue to.",
+				text: "From Revolut a SEPA Instant goes out (with EPC QR scanning; Revolut asks whether to add the payee to the allowed-recipients list and runs internal checks) to Monerium's Estonian IBAN — Revolut pays the SEPA transaction. The payment reference says where the money goes next: mpt:0x<address>?sid=<id>. On arrival Monerium automatically creates an issue order (placed → pending → processed) — the webhook reaches the backend in 4–5 seconds.",
 			},
 			{
 				num: "03",
-				title: "EURe mint and the MPT relayer — €0",
-				text: "Monerium verifies the payment and mints EURe 1:1 to the default account — a Gnosis Safe multisig relayer. mpt-main-rail (Cloudflare Workers) reads the address from the reference and reroutes the EURe via a cheap sponsored onchain transaction to the user's Gnosis address — MPT pays the gas.",
+				title: "EURe mint and the MPT forward — €0",
+				text: "Monerium mints EURe 1:1 to its default wallet — the MPT main-rail Safe (a 2/3 multisig) on Gnosis Chain. On the webhook, the backend worker (Cloudflare Workers) reads the address from the reference and executes the transfer through the Zodiac Roles module (the role may only call EURe.transfer) — a constrained router EOA signs and pays the gas. With no address in the reference, the funds stay safely parked in the Safe.",
 			},
 			{
 				num: "04",
 				title: "EURe with the user and closing the circle — €0",
-				text: "The user freely controls the EURe: onchain transactions, MPT checkout intents, or the off-ramp — open an own Monerium account (KYC/KYB) and Monerium returns the money by free SEPA Instant to PBZ/ZABA/OTP/Erste/HPB or any European bank. The circle is closed, end-to-end €0.",
+				text: "The user freely controls the EURe: onchain transactions (gas sponsored), MPT checkout intents (pending → paid on onchain confirmation, max €10,000 per intent), or the off-ramp — open an own Monerium account (KYC/KYB), sign a redeem and Monerium returns the money by free SEPA Instant to any European bank. The circle is closed, end-to-end €0.",
 			},
 		],
-		altTitle: "Alternative branch: Gnosis Pay VISA",
+		altTitle: "Alternative branch: Gnosis Pay VISA (in preparation)",
 		altText:
-			"Gnosis Pay issues its own VISA cards — virtual ones free, physical optional, with an optional Monerium IBAN. The user adds the card to Revolut and tops it up straight from Revolut — again €0 for the user, with no Monerium hop.",
-		liveNote: "All of this is already implemented and running in production:",
+			"Gnosis Pay deploys the user's own GP Safe (Delay + Roles modules) and issues a free virtual VISA card — with mandatory Sumsub KYC and an optional personal Monerium IBAN. Funding the card is a plain EURe transfer from the user's address over the existing sponsored rail, and Apple Pay / Google Pay work in Croatia. The integration is in pre-pilot preparation.",
+		liveNote:
+			"The MPT rail and checkout intents run in production at pay.domovina.ai; donate.domovina.ai is a static QR entry to the same rail:",
 		liveLinks: [
 			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },

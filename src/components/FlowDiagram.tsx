@@ -135,7 +135,7 @@ const H_POS: Record<NodeId, { x: number; y: number }> = {
 };
 
 /** edges that drop to the branch row in the horizontal layout (bottom → top) */
-const H_BRANCH: Set<EdgeId> = new Set(["e-p2p", "e-checkout", "e-gp-topup"]);
+const H_BRANCH: Set<EdgeId> = new Set(["e-p2p", "e-checkout", "e-gp-fund"]);
 
 /** single-column order for phones — everything stacked, near full-size nodes */
 const V_ORDER: NodeId[] = [
@@ -156,7 +156,7 @@ const V_POS: Record<NodeId, { x: number; y: number }> = Object.fromEntries(
 ) as Record<NodeId, { x: number; y: number }>;
 
 /** non-adjacent connections in the single column — drawn as right-side arcs, no label */
-const V_ARC: Set<EdgeId> = new Set(["e-checkout", "e-gp-topup", "e-redeem"]);
+const V_ARC: Set<EdgeId> = new Set(["e-checkout", "e-gp-fund", "e-redeem"]);
 
 export interface FlowDiagramProps {
 	locale: Locale;

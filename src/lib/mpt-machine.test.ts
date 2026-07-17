@@ -98,15 +98,41 @@ describe("terminal states", () => {
 		expect(last.balances.userAddress).toBe(onramp.initialAmount);
 	});
 
-	it("gnosis-pay branch spends from the card without touching Monerium", () => {
+	it("gnosis-pay branch funds the GP Safe from the user's address and spends at the POS", () => {
 		const gp = scenarios.find((s) => s.id === "gnosis-pay")!;
 		const steps = simulate(gp);
 		const last = steps.at(-1)!;
 		expect(last.balances.merchant).toBe(12.5);
 		expect(last.balances.gnosisPay).toBe(12.5);
-		for (const step of steps) {
-			expect(step.balances.moneriumMpt).toBe(0);
-			expect(step.balances.safeRelayer).toBe(0);
-		}
+		expect(last.balances.userAddress).toBe(0);
+		const fund = steps.find((s) => s.transition.id === "fundGnosisPay")!;
+		expect(fund.transition.from).toBe("userAddress");
+	});
+
+	it("checkout intents reject amounts above the €10,000 code guard", () => {
+		const oversized = {
+			id: "oversized-intent",
+			name: { hr: "test", en: "test" },
+			description: { hr: "test", en: "test" },
+			initialAmount: 20000,
+			steps: [
+				{ t: "cardTopup" as const, amount: 20000 },
+				{ t: "scanEpcQr" as const },
+				{ t: "confirmAllowlist" as const },
+				{ t: "revolutInternalCheck" as const },
+				{ t: "sepaToMonerium" as const, amount: 20000 },
+				{ t: "moneriumVerify" as const },
+				{ t: "mintEure" as const, amount: 20000 },
+				{ t: "relaySponsoredTx" as const, amount: 20000 },
+				{ t: "payCheckoutIntent" as const, amount: 10001 },
+				{ t: "payCheckoutIntent" as const, amount: 10000 },
+			],
+		};
+		const steps = simulate(oversized);
+		const rejected = steps.filter((s) => s.status === "rejected");
+		expect(rejected).toHaveLength(1);
+		expect(rejected[0].transition.id).toBe("payCheckoutIntent");
+		expect(rejected[0].amount).toBe(10001);
+		expect(steps.at(-1)!.balances.merchant).toBe(10000);
 	});
 });
