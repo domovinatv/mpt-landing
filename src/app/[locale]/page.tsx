@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isLocale } from "@/i18n/config";
+import { isLocale, type Locale } from "@/i18n/config";
 import { getDictionary, type Dictionary } from "@/i18n/dictionaries";
+import SimulationPlayer from "@/components/SimulationPlayer";
 
 export default async function LandingPage({
 	params,
@@ -17,9 +18,8 @@ export default async function LandingPage({
 			<BackgroundGlow />
 			<Nav dict={dict} />
 			<Hero dict={dict} />
-			<Problem dict={dict} />
-			<How dict={dict} />
-			<Compare dict={dict} />
+			<Flow dict={dict} />
+			<Simulations dict={dict} locale={locale} />
 			<Cta dict={dict} />
 			<Footer dict={dict} />
 		</main>
@@ -48,11 +48,11 @@ function Nav({ dict }: { dict: Dictionary }) {
 				</span>
 			</a>
 			<nav className="flex items-center gap-6 text-sm">
-				<a href="#how" className="hidden text-zinc-300 transition hover:text-white sm:inline">
-					{dict.nav.how}
+				<a href="#flow" className="hidden text-zinc-300 transition hover:text-white sm:inline">
+					{dict.nav.flow}
 				</a>
-				<a href="#compare" className="hidden text-zinc-300 transition hover:text-white sm:inline">
-					{dict.nav.compare}
+				<a href="#sim" className="hidden text-zinc-300 transition hover:text-white sm:inline">
+					{dict.nav.sim}
 				</a>
 				<a href="#contact" className="hidden text-zinc-300 transition hover:text-white sm:inline">
 					{dict.nav.contact}
@@ -101,7 +101,7 @@ function Hero({ dict }: { dict: Dictionary }) {
 				<p className="mt-6 max-w-xl text-lg leading-relaxed text-zinc-400">{dict.hero.subtitle}</p>
 				<div className="mt-9 flex flex-wrap gap-4">
 					<a
-						href="#how"
+						href="#flow"
 						className="rounded-full bg-emerald-400 px-6 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-300"
 					>
 						{dict.hero.ctaPrimary}
@@ -139,85 +139,61 @@ function Hero({ dict }: { dict: Dictionary }) {
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
 	return (
-		<div className="mx-auto max-w-2xl text-center">
+		<div className="mx-auto max-w-3xl text-center">
 			<h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h2>
 			<p className="mt-4 text-lg leading-relaxed text-zinc-400">{subtitle}</p>
 		</div>
 	);
 }
 
-function Problem({ dict }: { dict: Dictionary }) {
+function Flow({ dict }: { dict: Dictionary }) {
 	return (
-		<section className="relative z-10 mx-auto max-w-6xl px-6 py-20">
-			<SectionHeading title={dict.problem.title} subtitle={dict.problem.subtitle} />
-			<div className="mt-12 grid gap-6 sm:grid-cols-3">
-				{dict.problem.items.map((item) => (
-					<div key={item.title} className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
-						<h3 className="font-semibold text-zinc-100">{item.title}</h3>
-						<p className="mt-3 text-sm leading-relaxed text-zinc-400">{item.text}</p>
-					</div>
-				))}
-			</div>
-		</section>
-	);
-}
-
-function How({ dict }: { dict: Dictionary }) {
-	return (
-		<section id="how" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
-			<SectionHeading title={dict.how.title} subtitle={dict.how.subtitle} />
-			<div className="mt-12 grid gap-6 sm:grid-cols-3">
-				{dict.how.items.map((item, i) => (
+		<section id="flow" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+			<SectionHeading title={dict.flow.title} subtitle={dict.flow.subtitle} />
+			<div className="mt-12 grid gap-6 sm:grid-cols-2">
+				{dict.flow.steps.map((step) => (
 					<div
-						key={item.title}
+						key={step.num}
 						className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] p-6"
 					>
-						<span className="font-mono text-sm text-emerald-400">0{i + 1}</span>
-						<h3 className="mt-3 font-semibold text-zinc-100">{item.title}</h3>
-						<p className="mt-3 text-sm leading-relaxed text-zinc-400">{item.text}</p>
+						<span className="font-mono text-sm text-emerald-400">{step.num}</span>
+						<h3 className="mt-3 font-semibold text-zinc-100">{step.title}</h3>
+						<p className="mt-3 text-sm leading-relaxed text-zinc-400">{step.text}</p>
 					</div>
 				))}
 			</div>
-			<p className="mt-10 text-center text-sm text-zinc-500">{dict.how.note}</p>
+			<div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+				<h3 className="font-semibold text-zinc-100">{dict.flow.altTitle}</h3>
+				<p className="mt-3 text-sm leading-relaxed text-zinc-400">{dict.flow.altText}</p>
+			</div>
+			<p className="mt-8 text-center text-sm text-zinc-500">
+				{dict.flow.liveNote}{" "}
+				{dict.flow.liveLinks.map((link, i) => (
+					<span key={link.href}>
+						{i > 0 && " · "}
+						<a
+							href={link.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-emerald-300 underline decoration-emerald-400/40 underline-offset-4 transition hover:text-emerald-200"
+						>
+							{link.label}
+						</a>
+					</span>
+				))}
+			</p>
 		</section>
 	);
 }
 
-function Compare({ dict }: { dict: Dictionary }) {
+function Simulations({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 	return (
-		<section id="compare" className="relative z-10 mx-auto max-w-4xl scroll-mt-24 px-6 py-20">
-			<SectionHeading title={dict.compare.title} subtitle={dict.compare.subtitle} />
-			<div className="mt-12 overflow-x-auto">
-				<table className="w-full min-w-[28rem] border-separate border-spacing-0 text-sm">
-					<thead>
-						<tr className="text-left text-zinc-400">
-							<th className="pb-4 font-normal" />
-							<th className="pb-4 font-medium">{dict.compare.colTraditional}</th>
-							<th className="pb-4 font-semibold text-emerald-300">{dict.compare.colMpt}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{dict.compare.rows.map((row) => (
-							<tr key={row.label}>
-								<td className="border-t border-zinc-800 py-4 text-zinc-400">{row.label}</td>
-								<td className="border-t border-zinc-800 py-4 font-mono">{row.traditional}</td>
-								<td className="border-t border-zinc-800 py-4 font-mono text-emerald-300">{row.mpt}</td>
-							</tr>
-						))}
-						<tr>
-							<td className="border-t-2 border-zinc-700 py-4 font-semibold text-zinc-100">
-								{dict.compare.totalLabel}
-							</td>
-							<td className="border-t-2 border-zinc-700 py-4 font-mono font-semibold">
-								{dict.compare.totalTraditional}
-							</td>
-							<td className="border-t-2 border-zinc-700 py-4 font-mono text-lg font-bold text-emerald-300">
-								{dict.compare.totalMpt}
-							</td>
-						</tr>
-					</tbody>
-				</table>
+		<section id="sim" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+			<SectionHeading title={dict.sim.title} subtitle={dict.sim.subtitle} />
+			<div className="mt-12">
+				<SimulationPlayer locale={locale} labels={dict.sim.labels} />
 			</div>
+			<p className="mt-6 text-center text-sm text-zinc-500">{dict.sim.testsNote}</p>
 		</section>
 	);
 }

@@ -4,11 +4,11 @@ const hr = {
 	meta: {
 		title: "Mint Pay Transfer — 0% naknade, od početka do kraja",
 		description:
-			"MPT je javni projekt koji pokazuje da su transferi novca bez ijedne naknade tehnički mogući — end-to-end, bez skrivenih troškova i bez marži na tečaj.",
+			"MPT je javni projekt koji dokumentira i pokazuje da su transferi novca bez ijedne naknade tehnički mogući — end-to-end, s vizualizacijom toka novca i simulacijama korak po korak.",
 	},
 	nav: {
-		how: "Kako radi",
-		compare: "Usporedba",
+		flow: "Tok novca",
+		sim: "Simulacije",
 		contact: "Kontakt",
 	},
 	hero: {
@@ -16,8 +16,8 @@ const hr = {
 		title: "Slanje novca bez ijedne naknade.",
 		titleAccent: "Od početka do kraja.",
 		subtitle:
-			"MPT javnosti pokazuje da su transferi s 0% naknada tehnički mogući — end-to-end. Bez naknade pošiljatelja, bez naknade primatelja, bez marže na tečaj.",
-		ctaPrimary: "Saznaj kako",
+			"MPT javnosti pokazuje da su transferi s 0% naknada tehnički mogući — end-to-end. Cijeli tok novca dokumentiran je tekstualno i vizualno, sa simulacijama korak po korak.",
+		ctaPrimary: "Pogledaj tok novca",
 		ctaSecondary: "Javi se",
 		cardLabel: "Ukupni trošak transfera",
 		cardRows: [
@@ -27,58 +27,67 @@ const hr = {
 		],
 		cardTotal: "0,00 €",
 	},
-	problem: {
-		title: "Svaki transfer danas negdje curi",
+	flow: {
+		title: "Dokumentirani tok novca",
 		subtitle:
-			"Novac na putu od pošiljatelja do primatelja prolazi kroz lanac posrednika — i svaki uzme svoj dio.",
-		items: [
+			"Svaki korak, svaki račun i svaki prijelaz — tko što radi, koji su minimalni iznosi i tko plaća koju naknadu. Korisnik na svakom koraku plaća 0 €.",
+		steps: [
 			{
-				title: "Naknade posrednika",
-				text: "Kartične sheme, korespondentne banke i procesori naplaćuju svoju uslugu na svakom koraku lanca.",
+				num: "01",
+				title: "Kartični top-up na Revolut — 0 €",
+				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya korisnik prebaci min. 10 € na svoj Revolut. S hrvatskog IBAN-a ode 10 € i na litavski IBAN stigne 10 € — kartičnu transakciju plaća Revolut kroz svoj marketing.",
 			},
 			{
-				title: "Marže na tečaj",
-				text: "Kod međuvalutnih transfera skriveno se gubi 1–4 % kroz tečaj koji nije srednji tržišni.",
+				num: "02",
+				title: "SEPA Instant prema Moneriumu — 0 €",
+				text: "Iz Revoluta ide SEPA plaćanje (po defaultu SEPA Instant, uz skeniranje EPC QR koda). Revolut pita želi li korisnik primatelja dodati na listu dozvoljenih računa, napravi interne provjere i pošalje min. 1 € na Moneriumov estonski IBAN — SEPA transakciju plaća Revolut. U referenci plaćanja piše onchain adresa na koju novac dalje treba otići.",
 			},
 			{
-				title: "Fiksni troškovi",
-				text: "Fiksne naknade najviše pogađaju male iznose — poslati 10 € zna koštati više od 1 €.",
+				num: "03",
+				title: "Mint EURe i MPT relayer — 0 €",
+				text: "Monerium provjeri uplatu i minta EURe 1:1 na default account — Gnosis Safe multisig relayer. mpt-main-rail (Cloudflare Workers) pročita adresu iz reference i preusmjeri EURe jeftinom sponzoriranom onchain transakcijom na korisnikovu Gnosis adresu — gas plaća MPT.",
 			},
+			{
+				num: "04",
+				title: "EURe kod korisnika i zatvaranje kruga — 0 €",
+				text: "Korisnik slobodno raspolaže EURe: onchain transakcije, MPT checkout intenti ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB) i Monerium besplatnim SEPA Instantom vrati novac na PBZ/ZABA/OTP/Erste/HPB ili bilo koju europsku banku. Krug je zatvoren, end-to-end 0 €.",
+			},
+		],
+		altTitle: "Alternativna grana: Gnosis Pay VISA",
+		altText:
+			"Gnosis Pay izdaje vlastite VISA kartice — virtualne besplatno, fizičke opcionalno, uz opcionalni Monerium IBAN. Korisnik karticu doda u Revolut i top-up napravi izravno iz Revoluta — opet 0 € za korisnika, bez Monerium koraka.",
+		liveNote: "Sve navedeno već je implementirano i radi u produkciji:",
+		liveLinks: [
+			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
+			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
 		],
 	},
-	how: {
-		title: "Kako je 0% moguće?",
+	sim: {
+		title: "Simulacije korak po korak",
 		subtitle:
-			"Trošak izvršenja jedne transakcije na modernoj platnoj infrastrukturi mjeri se u tisućinkama centa. MPT pokazuje da naknade nisu tehnička nužnost.",
-		items: [
-			{
-				title: "Bez lanca posrednika",
-				text: "Transfer ide izravno od pošiljatelja do primatelja — nema karika koje naplaćuju prolaz.",
+			"Cijeli tok modeliran je kao state machine sa svim čvorovima, prijelazima i zaštitnim limitima. Odaberi scenarij i prati novac korak po korak — dijagram pokazuje gdje je novac, dnevnik tko je što napravio i tko je platio.",
+		labels: {
+			pickScenario: "Scenarij",
+			start: "Kreni",
+			next: "Sljedeći korak",
+			prev: "Natrag",
+			autoplay: "▶ Auto",
+			pause: "⏸ Pauza",
+			reset: "Reset",
+			stepOf: "Korak {i} / {n}",
+			userFees: "Naknade koje je platio korisnik",
+			sponsoredBy: "Troškove koraka pokrili:",
+			sponsorNames: {
+				revolut: "Revolut",
+				monerium: "Monerium",
+				mpt: "MPT",
+				gnosispay: "Gnosis Pay",
 			},
-			{
-				title: "Infrastruktura gotovo besplatna",
-				text: "Moderni platni sustavi izvršavaju transakciju uz zanemariv trošak — nema razloga da korisnik plaća postotak.",
-			},
-			{
-				title: "Otvoreno i provjerljivo",
-				text: "Cijeli je projekt javan: implementacije i tehnička dokumentacija bit će objavljene i dostupne svima.",
-			},
-		],
-		note: "Detaljan opis mehanizma i gotove implementacije objavljujemo uskoro.",
-	},
-	compare: {
-		title: "100 € na putu",
-		subtitle: "Što stigne primatelju kad pošaljete 100 € preko granice?",
-		colTraditional: "Tipičan transfer",
-		colMpt: "MPT",
-		rows: [
-			{ label: "Naknada pošiljatelja", traditional: "3–5 €", mpt: "0 €" },
-			{ label: "Marža na tečaj", traditional: "1–4 €", mpt: "0 €" },
-			{ label: "Naknada primatelja", traditional: "0–3 €", mpt: "0 €" },
-		],
-		totalLabel: "Primatelj dobije",
-		totalTraditional: "88–96 €",
-		totalMpt: "100,00 €",
+			finished: "Scenarij dovršen — korisnik je platio 0,00 €.",
+			logEmpty: "Pritisni Kreni ili ▶ Auto za pokretanje simulacije.",
+		},
+		testsNote:
+			"Isti state machine pokreće i automatske testove: svaki scenarij dokazuje da korisnik plaća 0 € i da se iznosi čuvaju 1:1 na svakom koraku.",
 	},
 	cta: {
 		title: "Projekt je otvoren javnosti",
@@ -98,11 +107,11 @@ const en: typeof hr = {
 	meta: {
 		title: "Mint Pay Transfer — 0% fees, end to end",
 		description:
-			"MPT is a public project demonstrating that money transfers with zero fees are technically possible — end-to-end, with no hidden costs and no FX markup.",
+			"MPT is a public project documenting and demonstrating that zero-fee money transfers are technically possible — end-to-end, with a visualized money flow and step-by-step simulations.",
 	},
 	nav: {
-		how: "How it works",
-		compare: "Comparison",
+		flow: "Money flow",
+		sim: "Simulations",
 		contact: "Contact",
 	},
 	hero: {
@@ -110,8 +119,8 @@ const en: typeof hr = {
 		title: "Send money with zero fees.",
 		titleAccent: "End to end.",
 		subtitle:
-			"MPT shows the public that transfers with 0% fees are technically possible — end-to-end. No sender fee, no recipient fee, no FX markup.",
-		ctaPrimary: "See how",
+			"MPT shows the public that transfers with 0% fees are technically possible — end-to-end. The entire money flow is documented textually and visually, with step-by-step simulations.",
+		ctaPrimary: "See the money flow",
 		ctaSecondary: "Get in touch",
 		cardLabel: "Total transfer cost",
 		cardRows: [
@@ -121,58 +130,67 @@ const en: typeof hr = {
 		],
 		cardTotal: "€0.00",
 	},
-	problem: {
-		title: "Every transfer leaks somewhere today",
+	flow: {
+		title: "The documented money flow",
 		subtitle:
-			"Money travels from sender to recipient through a chain of intermediaries — and each takes a cut.",
-		items: [
+			"Every step, every account and every transition — who does what, what the minimum amounts are and who pays each fee. The user pays €0 at every step.",
+		steps: [
 			{
-				title: "Intermediary fees",
-				text: "Card schemes, correspondent banks and processors charge for their service at every step of the chain.",
+				num: "01",
+				title: "Card top-up to Revolut — €0",
+				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the user moves min. €10 to their Revolut. €10 leaves the Croatian IBAN and €10 arrives on the Lithuanian IBAN — Revolut pays the card transaction as part of its marketing.",
 			},
 			{
-				title: "FX markups",
-				text: "On cross-currency transfers, 1–4% is silently lost through exchange rates that aren't mid-market.",
+				num: "02",
+				title: "SEPA Instant to Monerium — €0",
+				text: "From Revolut a SEPA payment goes out (SEPA Instant by default, with EPC QR code scanning). Revolut asks whether to add the payee to the allowed-recipients list, runs internal checks and sends min. €1 to Monerium's Estonian IBAN — Revolut pays the SEPA transaction. The payment reference carries the onchain address the money should continue to.",
 			},
 			{
-				title: "Fixed costs",
-				text: "Flat fees hit small amounts hardest — sending €10 can cost more than €1.",
+				num: "03",
+				title: "EURe mint and the MPT relayer — €0",
+				text: "Monerium verifies the payment and mints EURe 1:1 to the default account — a Gnosis Safe multisig relayer. mpt-main-rail (Cloudflare Workers) reads the address from the reference and reroutes the EURe via a cheap sponsored onchain transaction to the user's Gnosis address — MPT pays the gas.",
 			},
+			{
+				num: "04",
+				title: "EURe with the user and closing the circle — €0",
+				text: "The user freely controls the EURe: onchain transactions, MPT checkout intents, or the off-ramp — open an own Monerium account (KYC/KYB) and Monerium returns the money by free SEPA Instant to PBZ/ZABA/OTP/Erste/HPB or any European bank. The circle is closed, end-to-end €0.",
+			},
+		],
+		altTitle: "Alternative branch: Gnosis Pay VISA",
+		altText:
+			"Gnosis Pay issues its own VISA cards — virtual ones free, physical optional, with an optional Monerium IBAN. The user adds the card to Revolut and tops it up straight from Revolut — again €0 for the user, with no Monerium hop.",
+		liveNote: "All of this is already implemented and running in production:",
+		liveLinks: [
+			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
+			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
 		],
 	},
-	how: {
-		title: "How is 0% possible?",
+	sim: {
+		title: "Step-by-step simulations",
 		subtitle:
-			"Executing a single transaction on modern payment infrastructure costs fractions of a cent. MPT demonstrates that fees are not a technical necessity.",
-		items: [
-			{
-				title: "No chain of intermediaries",
-				text: "The transfer goes directly from sender to recipient — no links charging for passage.",
+			"The entire flow is modeled as a state machine with every node, transition and guard limit. Pick a scenario and follow the money step by step — the diagram shows where the money is, the log shows who did what and who paid.",
+		labels: {
+			pickScenario: "Scenario",
+			start: "Start",
+			next: "Next step",
+			prev: "Back",
+			autoplay: "▶ Auto",
+			pause: "⏸ Pause",
+			reset: "Reset",
+			stepOf: "Step {i} / {n}",
+			userFees: "Fees paid by the user",
+			sponsoredBy: "Step costs covered by:",
+			sponsorNames: {
+				revolut: "Revolut",
+				monerium: "Monerium",
+				mpt: "MPT",
+				gnosispay: "Gnosis Pay",
 			},
-			{
-				title: "Near-free infrastructure",
-				text: "Modern payment systems execute a transaction at negligible cost — there's no reason for users to pay a percentage.",
-			},
-			{
-				title: "Open and verifiable",
-				text: "The whole project is public: implementations and technical documentation will be published and available to everyone.",
-			},
-		],
-		note: "A detailed description of the mechanism and working implementations are coming soon.",
-	},
-	compare: {
-		title: "€100 on its way",
-		subtitle: "What reaches the recipient when you send €100 across a border?",
-		colTraditional: "Typical transfer",
-		colMpt: "MPT",
-		rows: [
-			{ label: "Sender fee", traditional: "€3–5", mpt: "€0" },
-			{ label: "FX markup", traditional: "€1–4", mpt: "€0" },
-			{ label: "Recipient fee", traditional: "€0–3", mpt: "€0" },
-		],
-		totalLabel: "Recipient receives",
-		totalTraditional: "€88–96",
-		totalMpt: "€100.00",
+			finished: "Scenario complete — the user paid €0.00.",
+			logEmpty: "Press Start or ▶ Auto to run the simulation.",
+		},
+		testsNote:
+			"The same state machine also powers automated tests: every scenario proves the user pays €0 and amounts are conserved 1:1 at every step.",
 	},
 	cta: {
 		title: "The project is open to the public",
