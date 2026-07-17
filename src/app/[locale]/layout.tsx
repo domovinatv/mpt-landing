@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import { locales, isLocale, type Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import "../globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
+const inter = Inter({
+	variable: "--font-inter",
 	subsets: ["latin", "latin-ext"],
 });
 
-const geistMono = Geist_Mono({
-	variable: "--font-geist-mono",
+const fraunces = Fraunces({
+	variable: "--font-fraunces",
 	subsets: ["latin", "latin-ext"],
+	axes: ["opsz"],
 });
 
 export function generateStaticParams() {
@@ -60,7 +61,7 @@ export default async function LocaleLayout({
 			<head>
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+			<body className={`${inter.variable} ${fraunces.variable} antialiased`}>{children}</body>
 		</html>
 	);
 }

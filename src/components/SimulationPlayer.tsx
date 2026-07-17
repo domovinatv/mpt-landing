@@ -56,7 +56,7 @@ export default function SimulationPlayer({
 	const [scenarioId, setScenarioId] = useState(scenarios[0].id);
 	const [cursor, setCursor] = useState(-1); // -1 = before the first step
 	const [playing, setPlaying] = useState(false);
-	const logRef = useRef<HTMLDivElement>(null);
+	const lastStepRef = useRef<HTMLDivElement>(null);
 	const orientation = useOrientation();
 
 	const scenario = scenarios.find((s) => s.id === scenarioId)!;
@@ -75,9 +75,12 @@ export default function SimulationPlayer({
 		return () => clearInterval(id);
 	}, [playing, atEnd, steps.length]);
 
+	// during autoplay keep the newest log entry in view via the page scroll —
+	// the log itself has no inner scrollbar
 	useEffect(() => {
-		logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-	}, [cursor]);
+		if (!playing) return;
+		lastStepRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+	}, [cursor, playing]);
 
 	const selectScenario = (id: string) => {
 		setScenarioId(id);
@@ -86,18 +89,19 @@ export default function SimulationPlayer({
 	};
 
 	const balances = useMemo(() => {
-		if (!current) return undefined;
+		// before the first step all the money sits on the bank account
+		if (!current) return { bank: eur(locale, scenario.initialAmount) };
 		const out: Partial<Record<NodeId, string>> = {};
 		for (const [node, value] of Object.entries(current.balances)) {
 			if (value > 0) out[node as NodeId] = eur(locale, value);
 		}
 		return out;
-	}, [current, locale]);
+	}, [current, locale, scenario.initialAmount]);
 
 	return (
-		<div className="rounded-3xl border border-zinc-800 bg-zinc-950/60 p-4 sm:p-6">
+		<div className="rounded-[18px] border border-line bg-white p-4 shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)] sm:p-6">
 			{/* scenario picker */}
-			<p className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+			<p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-gold">
 				{labels.pickScenario}
 			</p>
 			<div className="flex flex-wrap gap-2">
@@ -107,36 +111,36 @@ export default function SimulationPlayer({
 						onClick={() => selectScenario(s.id)}
 						className={`rounded-full border px-4 py-1.5 text-xs font-medium transition ${
 							s.id === scenarioId
-								? "border-emerald-400 bg-emerald-400/10 text-emerald-300"
-								: "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+								? "border-gold bg-gold-soft text-[#7a5a12]"
+								: "border-line text-mute hover:border-gold hover:text-ink"
 						}`}
 					>
 						{s.name[locale]}
 					</button>
 				))}
 			</div>
-			<p className="mt-3 text-sm leading-relaxed text-zinc-400">{scenario.description[locale]}</p>
+			<p className="mt-3 text-sm leading-relaxed text-mute">{scenario.description[locale]}</p>
 
 			{/* controls */}
 			<div className="mt-5 flex flex-wrap items-center gap-2">
 				<button
 					onClick={() => setCursor((c) => Math.max(c - 1, -1))}
 					disabled={cursor < 0}
-					className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-200 transition enabled:hover:border-zinc-500 disabled:opacity-40"
+					className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition enabled:hover:border-gold disabled:opacity-40"
 				>
 					← {labels.prev}
 				</button>
 				<button
 					onClick={() => setCursor((c) => Math.min(c + 1, steps.length - 1))}
 					disabled={atEnd}
-					className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-emerald-950 transition enabled:hover:bg-emerald-300 disabled:opacity-40"
+					className="rounded-full bg-gradient-to-br from-gold-light to-gold px-4 py-2 text-xs font-semibold text-[#3a2900] shadow-[0_8px_22px_-10px_rgba(200,145,42,0.7)] transition enabled:hover:-translate-y-0.5 disabled:opacity-40"
 				>
 					{cursor < 0 ? labels.start : labels.next} →
 				</button>
 				<button
 					onClick={() => setPlaying((p) => !p)}
 					disabled={atEnd && !playing}
-					className="rounded-full border border-emerald-400/40 px-4 py-2 text-xs font-semibold text-emerald-300 transition enabled:hover:bg-emerald-400/10 disabled:opacity-40"
+					className="rounded-full border border-gold/50 px-4 py-2 text-xs font-semibold text-gold transition enabled:hover:bg-gold-soft/60 disabled:opacity-40"
 				>
 					{playing ? labels.pause : labels.autoplay}
 				</button>
@@ -145,11 +149,11 @@ export default function SimulationPlayer({
 						setCursor(-1);
 						setPlaying(false);
 					}}
-					className="rounded-full border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-400 transition hover:border-zinc-500"
+					className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-mute transition hover:border-gold"
 				>
 					{labels.reset}
 				</button>
-				<span className="ml-auto font-mono text-xs text-zinc-500">
+				<span className="ml-auto font-mono text-xs text-mute">
 					{labels.stepOf
 						.replace("{i}", String(Math.max(cursor + 1, 0)))
 						.replace("{n}", String(steps.length))}
@@ -157,11 +161,11 @@ export default function SimulationPlayer({
 			</div>
 
 			{/* diagram — full width; horizontal rail on wide screens, vertical on mobile */}
-			<div className="mt-4 h-[1560px] w-full overflow-hidden rounded-2xl border border-zinc-800/80 bg-[#08110d] lg:h-[560px] 2xl:h-[640px]">
+			<div className="mt-4 h-[1560px] w-full overflow-hidden rounded-2xl border border-line bg-soft lg:h-[560px] 2xl:h-[640px]">
 				<FlowDiagram
 					locale={locale}
 					orientation={orientation}
-					activeNode={current?.status === "ok" ? current.location : undefined}
+					activeNode={current ? (current.status === "ok" ? current.location : undefined) : "bank"}
 					activeEdge={current?.transition.edge}
 					balances={balances}
 					subsetNodes={subset.nodes}
@@ -171,26 +175,23 @@ export default function SimulationPlayer({
 
 			{/* log + fee counter */}
 			<div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-				<div
-					ref={logRef}
-					className="min-h-40 space-y-2 overflow-y-auto rounded-2xl border border-zinc-800/80 bg-[#08110d] p-3"
-					style={{ maxHeight: "24rem" }}
-				>
-					{cursor < 0 && <p className="p-2 text-sm text-zinc-500">{labels.logEmpty}</p>}
+				<div className="min-h-40 space-y-2 rounded-2xl border border-line bg-soft p-3">
+					{cursor < 0 && <p className="p-2 text-sm text-mute">{labels.logEmpty}</p>}
 					{steps.slice(0, cursor + 1).map((step) => (
 						<div
 							key={step.index}
+							ref={step.index === cursor ? lastStepRef : undefined}
 							className={`rounded-xl border p-3 text-sm ${
 								step.status === "rejected"
-									? "border-red-400/30 bg-red-400/5"
+									? "border-red/30 bg-red-soft"
 									: step.index === cursor
-										? "border-emerald-400/40 bg-emerald-400/5"
-										: "border-zinc-800 bg-zinc-900/40"
+										? "border-gold bg-gold-soft/50"
+										: "border-line bg-white"
 							}`}
 						>
 							<div className="flex items-baseline justify-between gap-2">
-								<p className="font-semibold text-zinc-100">
-									<span className="mr-2 font-mono text-xs text-zinc-500">
+								<p className="font-semibold text-ink">
+									<span className="mr-2 font-mono text-xs text-mute">
 										{String(step.index + 1).padStart(2, "0")}
 									</span>
 									{step.transition.label[locale]}
@@ -198,37 +199,37 @@ export default function SimulationPlayer({
 								{step.transition.movesMoney && (
 									<span
 										className={`shrink-0 font-mono text-xs ${
-											step.status === "rejected" ? "text-red-300 line-through" : "text-emerald-300"
+											step.status === "rejected" ? "text-red line-through" : "text-green"
 										}`}
 									>
 										{eur(locale, step.amount)}
 									</span>
 								)}
 							</div>
-							<p className="mt-1 text-xs leading-relaxed text-zinc-400">
+							<p className="mt-1 text-xs leading-relaxed text-mute">
 								{step.status === "rejected"
 									? step.rejectReason?.[locale]
 									: step.transition.description[locale]}
 							</p>
 							{step.status === "ok" && (
-								<p className="mt-1.5 text-[11px] text-zinc-500">{step.transition.feeNote[locale]}</p>
+								<p className="mt-1.5 text-[11px] text-mute/80">{step.transition.feeNote[locale]}</p>
 							)}
 						</div>
 					))}
 					{atEnd && cursor >= 0 && (
-						<p className="p-2 text-center text-xs font-medium text-emerald-300">{labels.finished}</p>
+						<p className="p-2 text-center text-xs font-medium text-green">{labels.finished}</p>
 					)}
 				</div>
 
 				<div className="flex flex-col gap-2 self-start">
-					<div className="flex items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3">
-						<span className="text-xs text-zinc-400">{labels.userFees}</span>
-						<span className="font-mono text-lg font-bold text-emerald-300">
+					<div className="flex items-center justify-between rounded-2xl border border-gold/40 bg-gold-soft/50 px-4 py-3">
+						<span className="text-xs text-mute">{labels.userFees}</span>
+						<span className="font-mono text-lg font-bold text-navy">
 							{eur(locale, current?.userFeesTotal ?? 0)}
 						</span>
 					</div>
 					{current && Object.keys(current.sponsoredBy).length > 0 && (
-						<p className="text-[11px] leading-relaxed text-zinc-500">
+						<p className="text-[11px] leading-relaxed text-mute">
 							{labels.sponsoredBy}{" "}
 							{Object.entries(current.sponsoredBy)
 								.map(

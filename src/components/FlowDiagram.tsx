@@ -29,6 +29,8 @@ type MptNodeData = {
 	subtitle: string;
 	badge?: string;
 	active: boolean;
+	/** part of the selected scenario's subset — outlined even before the simulation runs */
+	highlighted: boolean;
 	dimmed: boolean;
 	balance?: string;
 };
@@ -36,30 +38,32 @@ type MptNodeData = {
 const MptNode = memo(function MptNode({ data }: NodeProps<Node<MptNodeData>>) {
 	return (
 		<div
-			className={`w-[260px] rounded-2xl border p-4 backdrop-blur transition-all duration-300 ${
+			className={`w-[260px] rounded-2xl border p-4 transition-all duration-300 ${
 				data.active
-					? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_30px_rgba(52,211,153,0.25)]"
-					: "border-zinc-700/80 bg-zinc-900/80"
+					? "border-navy bg-soft shadow-[0_0_30px_rgba(0,47,108,0.3)]"
+					: data.highlighted
+						? "border-gold bg-gold-soft/40"
+						: "border-line bg-white shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)]"
 			} ${data.dimmed ? "opacity-50" : ""}`}
 		>
-			<Handle type="target" position={Position.Top} id="t" className="!bg-emerald-400/60" />
-			<Handle type="target" position={Position.Bottom} id="bt" className="!bg-emerald-400/60" />
-			<Handle type="source" position={Position.Bottom} id="b" className="!bg-emerald-400/60" />
-			<Handle type="source" position={Position.Right} id="r" className="!bg-emerald-400/60" />
-			<Handle type="target" position={Position.Right} id="rt" className="!bg-emerald-400/60" />
-			<Handle type="source" position={Position.Left} id="ls" className="!bg-emerald-400/60" />
-			<Handle type="target" position={Position.Left} id="l" className="!bg-emerald-400/60" />
+			<Handle type="target" position={Position.Top} id="t" className="!bg-navy/40" />
+			<Handle type="target" position={Position.Bottom} id="bt" className="!bg-navy/40" />
+			<Handle type="source" position={Position.Bottom} id="b" className="!bg-navy/40" />
+			<Handle type="source" position={Position.Right} id="r" className="!bg-navy/40" />
+			<Handle type="target" position={Position.Right} id="rt" className="!bg-navy/40" />
+			<Handle type="source" position={Position.Left} id="ls" className="!bg-navy/40" />
+			<Handle type="target" position={Position.Left} id="l" className="!bg-navy/40" />
 			<div className="flex items-start justify-between gap-2">
-				<p className="text-sm font-semibold text-zinc-100">{data.title}</p>
+				<p className="text-sm font-semibold text-ink">{data.title}</p>
 				{data.badge && (
-					<span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+					<span className="shrink-0 rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-bold text-[#7a5a12]">
 						{data.badge}
 					</span>
 				)}
 			</div>
-			<p className="mt-1.5 text-[11px] leading-snug text-zinc-400">{data.subtitle}</p>
+			<p className="mt-1.5 text-[11px] leading-snug text-mute">{data.subtitle}</p>
 			{data.balance !== undefined && (
-				<p className="mt-2 font-mono text-xs font-semibold text-emerald-300">{data.balance}</p>
+				<p className="mt-2 font-mono text-xs font-semibold text-navy">{data.balance}</p>
 			)}
 		</div>
 	);
@@ -67,6 +71,8 @@ const MptNode = memo(function MptNode({ data }: NodeProps<Node<MptNodeData>>) {
 
 type MptEdgeData = {
 	active: boolean;
+	/** part of the selected scenario's subset — accent stroke even before the simulation runs */
+	highlighted: boolean;
 	dimmed: boolean;
 	/** push the label off the edge midpoint (used to drop rail labels into open space) */
 	labelOffsetY: number;
@@ -96,6 +102,7 @@ const MptEdge = memo(function MptEdge({
 		targetPosition,
 	});
 	const active = data?.active ?? false;
+	const highlighted = data?.highlighted ?? false;
 	const dimmed = data?.dimmed ?? false;
 	const offsetY = data?.labelOffsetY ?? 0;
 	const t = data?.labelT;
@@ -113,8 +120,10 @@ const MptEdge = memo(function MptEdge({
 						}}
 						className={`pointer-events-none max-w-[300px] rounded-lg border px-2 py-1 text-center text-[10px] leading-snug transition-opacity duration-300 ${
 							active
-								? "border-emerald-400/50 bg-[#09120e] text-emerald-300"
-								: "border-zinc-800 bg-[#09120e]/90 text-zinc-400"
+								? "border-navy/50 bg-white text-navy"
+								: highlighted
+									? "border-gold/60 bg-white text-[#7a5a12]"
+									: "border-line bg-white/90 text-mute"
 						} ${dimmed ? "opacity-50" : ""}`}
 					>
 						{label}
@@ -225,6 +234,7 @@ export default function FlowDiagram({
 					subtitle: n.subtitle[locale],
 					badge: n.badge?.[locale],
 					active: n.id === activeNode,
+					highlighted: subsetNodes !== undefined && subsetNodes.has(n.id),
 					dimmed: subsetNodes !== undefined && !subsetNodes.has(n.id),
 					balance: balances?.[n.id],
 				},
@@ -238,6 +248,7 @@ export default function FlowDiagram({
 		() =>
 			flowEdges.map((e) => {
 				const active = e.id === activeEdge;
+				const highlighted = subsetEdges !== undefined && subsetEdges.has(e.id);
 				const dimmed = subsetEdges !== undefined && !subsetEdges.has(e.id);
 				let sourceHandle: string;
 				let targetHandle: string;
@@ -276,16 +287,16 @@ export default function FlowDiagram({
 					targetHandle,
 					label,
 					animated: active,
-					data: { active, dimmed, labelOffsetY, labelT },
+					data: { active, highlighted, dimmed, labelOffsetY, labelT },
 					markerEnd: {
 						type: MarkerType.ArrowClosed,
-						color: active ? "#34d399" : "#71717a",
+						color: active ? "#002F6C" : highlighted ? "#C8912A" : "#9AA9C2",
 						width: 22,
 						height: 22,
 					},
 					style: {
-						stroke: active ? "#34d399" : "#3f3f46",
-						strokeWidth: active ? 2.5 : 1.5,
+						stroke: active ? "#002F6C" : highlighted ? "#C8912A" : "#9AA9C2",
+						strokeWidth: active ? 2.5 : highlighted ? 2 : 1.5,
 						opacity: dimmed ? 0.5 : 1,
 						transition: "opacity 300ms",
 					},
@@ -310,10 +321,10 @@ export default function FlowDiagram({
 			nodesDraggable={false}
 			nodesConnectable={false}
 			elementsSelectable={false}
-			colorMode="dark"
+			colorMode="light"
 			style={{ background: "transparent" }}
 		>
-			<Background color="#1c2b24" gap={28} />
+			<Background color="#DCE3EF" gap={28} />
 		</ReactFlow>
 	);
 }

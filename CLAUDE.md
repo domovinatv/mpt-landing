@@ -80,7 +80,21 @@ Copy dijagrama/simulacija: `L10n` polja u `mpt-machine.ts`.
   bez labela — informacija je u dnevniku simulacije)
 - custom edge s labelOffsetY (rail labeli u pojas između redova) i labelT (fan-out labeli
   povučeni prema cilju da se ne sudaraju)
-- odabrani scenarij dima ne-sudjelujuće čvorove/veze na opacity 0.5 (`scenarioSubset`)
+- tri vizualna stanja iz `scenarioSubset`: ne-sudjelujući čvorovi/veze dimmed (opacity
+  0.5) < subset lanca scenarija highlightan gold rubom/linijama/strelicama < aktivni korak
+  simulacije navy + glow + animirana linija; prije prvog koraka (cursor = -1) čvor `bank`
+  je aktivan s prikazanim `initialAmount`
+
+## Dizajn / brand
+
+airKUNA brand (izvor: `~/git/airkuna/airkuna-web`, `com/index.html` `:root` tokeni —
+tamo je SSOT dizajna): paper `#FCFBF8` pozadina, navy `#002F6C` primarna, gold
+`#C8912A`/`#E3AF35` akcent, Fraunces (serif, naslovi) + Inter (body) preko next/font,
+radius 18px kartice / 999px pillovi, meke plavkaste sjene, navy+gold radijalni gradijent
+za tamne trake (hero kartica, CTA). **Samo light tema** — airkuna-web nema dark mode.
+Tokeni u `globals.css` (`@theme inline` → Tailwind klase `bg-paper`, `text-navy`,
+`border-line`, `bg-gold-soft`…). Dnevnik simulacija nema unutarnji scroll (raste u
+dokumentu; auto-play prati zadnji korak `scrollIntoView`-om).
 
 ## Otvoreno / TODO
 
