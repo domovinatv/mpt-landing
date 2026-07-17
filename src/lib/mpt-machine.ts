@@ -39,7 +39,7 @@ import type { Locale } from "@/i18n/config";
 export type L10n = Record<Locale, string>;
 
 export type NodeId =
-	| "hrBank"
+	| "bank"
 	| "revolut"
 	| "moneriumMpt"
 	| "safeRelayer"
@@ -47,8 +47,7 @@ export type NodeId =
 	| "otherAddress"
 	| "merchant"
 	| "gnosisPay"
-	| "ownMonerium"
-	| "euBank";
+	| "ownMonerium";
 
 export type FeePayer = "revolut" | "monerium" | "mpt" | "gnosispay" | "none";
 
@@ -72,6 +71,7 @@ export type EdgeId =
 	| "e-checkout"
 	| "e-gp-fund"
 	| "e-gp-spend"
+	| "e-gp-revolut"
 	| "e-redeem"
 	| "e-offramp";
 
@@ -97,6 +97,7 @@ export type TransitionId =
 	| "issueGnosisPayVisa"
 	| "fundGnosisPay"
 	| "gnosisPayCardSpend"
+	| "topupRevolutFromGnosisPay"
 	| "openMoneriumKyc"
 	| "redeemEure"
 	| "sepaInstantOfframp";
@@ -153,13 +154,13 @@ export interface SimStep {
 
 export const nodes: FlowNode[] = [
 	{
-		id: "hrBank",
-		title: { hr: "Hrvatska banka", en: "Croatian bank" },
+		id: "bank",
+		title: { hr: "Banka u eurozoni", en: "Eurozone bank" },
 		subtitle: {
-			hr: "PBZ · ZABA · OTP · Erste · HPB … — debitna kartica (Mastercard/VISA), HR IBAN",
-			en: "PBZ · ZABA · OTP · Erste · HPB … — debit card (Mastercard/VISA), HR IBAN",
+			hr: "PBZ · ZABA · OTP · Erste · HPB … ili bilo koja banka s IBAN-om u eurozoni · debitna kartica (Mastercard/VISA)",
+			en: "PBZ · ZABA · OTP · Erste · HPB … or any bank with an IBAN in the eurozone · debit card (Mastercard/VISA)",
 		},
-		badge: { hr: "Start", en: "Start" },
+		badge: { hr: "Početak i kraj", en: "Start & end" },
 		x: 0,
 		y: 0,
 	},
@@ -248,17 +249,6 @@ export const nodes: FlowNode[] = [
 		x: 0,
 		y: 1150,
 	},
-	{
-		id: "euBank",
-		title: { hr: "Europska banka", en: "European bank" },
-		subtitle: {
-			hr: "Natrag na PBZ/ZABA/OTP/Erste/HPB ili bilo koju EU banku — krug zatvoren",
-			en: "Back to PBZ/ZABA/OTP/Erste/HPB or any EU bank — the circle is closed",
-		},
-		badge: { hr: "Kraj kruga", en: "Circle closed" },
-		x: 0,
-		y: 1380,
-	},
 ];
 
 // ---------------------------------------------------------------------------
@@ -268,7 +258,7 @@ export const nodes: FlowNode[] = [
 export const edges: FlowEdge[] = [
 	{
 		id: "e-card",
-		source: "hrBank",
+		source: "bank",
 		target: "revolut",
 		label: {
 			hr: "Apple Pay / Google Pay · min 10 € (Revolutov limit) · 0 € (plaća Revolut)",
@@ -340,6 +330,16 @@ export const edges: FlowEdge[] = [
 		lateral: true,
 	},
 	{
+		id: "e-gp-revolut",
+		source: "gnosisPay",
+		target: "revolut",
+		label: {
+			hr: "top-up Revoluta GP VISA karticom · 0 €",
+			en: "Revolut top-up with the GP VISA card · €0",
+		},
+		lateral: true,
+	},
+	{
 		id: "e-redeem",
 		source: "userAddress",
 		target: "ownMonerium",
@@ -348,10 +348,10 @@ export const edges: FlowEdge[] = [
 	{
 		id: "e-offramp",
 		source: "ownMonerium",
-		target: "euBank",
+		target: "bank",
 		label: {
-			hr: "besplatni SEPA Instant off-ramp · 0 € (plaća Monerium)",
-			en: "free SEPA Instant off-ramp · €0 (Monerium pays)",
+			hr: "besplatni SEPA Instant off-ramp natrag u banku · 0 € (plaća Monerium)",
+			en: "free SEPA Instant off-ramp back to the bank · €0 (Monerium pays)",
 		},
 	},
 ];
@@ -363,13 +363,13 @@ export const edges: FlowEdge[] = [
 export const transitions: Transition[] = [
 	{
 		id: "cardTopup",
-		from: "hrBank",
+		from: "bank",
 		to: "revolut",
 		edge: "e-card",
 		label: { hr: "Kartični top-up na Revolut", en: "Card top-up to Revolut" },
 		description: {
-			hr: "Debitnom karticom hrvatske banke (Mastercard/VISA) preko Apple Paya ili Google Paya korisnik napuni Revolut. S HR IBAN-a odlazi puni iznos i puni iznos stiže na litavski IBAN. Minimum od 10 € je Revolutovo produktno pravilo.",
-			en: "Using a Croatian bank debit card (Mastercard/VISA) via Apple Pay or Google Pay, the user tops up Revolut. The full amount leaves the HR IBAN and the full amount arrives on the Lithuanian IBAN. The €10 minimum is a Revolut product rule.",
+			hr: "Debitnom karticom svoje banke (Mastercard/VISA) — hrvatske ili bilo koje eurozonske — preko Apple Paya ili Google Paya korisnik napuni Revolut. S IBAN-a banke odlazi puni iznos i puni iznos stiže na litavski IBAN. Minimum od 10 € je Revolutovo produktno pravilo.",
+			en: "Using their bank's debit card (Mastercard/VISA) — Croatian or any eurozone bank — via Apple Pay or Google Pay, the user tops up Revolut. The full amount leaves the bank's IBAN and the full amount arrives on the Lithuanian IBAN. The €10 minimum is a Revolut product rule.",
 		},
 		feePayer: "revolut",
 		feeNote: {
@@ -553,6 +553,24 @@ export const transitions: Transition[] = [
 		movesMoney: true,
 	},
 	{
+		id: "topupRevolutFromGnosisPay",
+		from: "gnosisPay",
+		to: "revolut",
+		edge: "e-gp-revolut",
+		label: { hr: "Top-up Revoluta GP VISA karticom", en: "Revolut top-up with the GP VISA card" },
+		description: {
+			hr: "Gnosis Pay VISA je obična VISA debitna kartica — korisnik je doda u Revolut i njome besplatno napuni Revolut. Time se krug može vrtjeti i kroz karticu: EURe s GP Safea natrag u Revolut, bez ijedne naknade.",
+			en: "The Gnosis Pay VISA is a regular VISA debit card — the user adds it to Revolut and tops Revolut up with it for free. The circle can thus also spin through the card: EURe from the GP Safe back into Revolut, with no fee.",
+		},
+		feePayer: "revolut",
+		feeNote: {
+			hr: "Kartični top-up plaća Revolut — za korisnika 0 €.",
+			en: "Revolut pays the card top-up — €0 for the user.",
+		},
+		minAmount: 10,
+		movesMoney: true,
+	},
+	{
 		id: "openMoneriumKyc",
 		from: null,
 		to: null,
@@ -583,12 +601,12 @@ export const transitions: Transition[] = [
 	{
 		id: "sepaInstantOfframp",
 		from: "ownMonerium",
-		to: "euBank",
+		to: "bank",
 		edge: "e-offramp",
 		label: { hr: "Besplatni SEPA Instant off-ramp", en: "Free SEPA Instant off-ramp" },
 		description: {
-			hr: "Monerium napravi besplatnu SEPA Instant uplatu natrag na PBZ/ZABA/OTP/Erste/HPB ili bilo koju drugu europsku banku — cijeli krug je zatvoren.",
-			en: "Monerium makes a free SEPA Instant payment back to PBZ/ZABA/OTP/Erste/HPB or any other European bank — the whole circle is closed.",
+			hr: "Monerium napravi besplatnu SEPA Instant uplatu natrag na istu banku s koje je krug krenuo — ili bilo koju drugu banku s IBAN-om u eurozoni. Krug završava u točki u kojoj je i počeo.",
+			en: "Monerium makes a free SEPA Instant payment back to the same bank the circle started from — or any other bank with a eurozone IBAN. The circle ends exactly where it began.",
 		},
 		feePayer: "monerium",
 		feeNote: { hr: "SEPA Instant off-ramp plaća Monerium — besplatan je.", en: "Monerium pays the SEPA Instant off-ramp — it is free." },
@@ -632,8 +650,8 @@ export const scenarios: Scenario[] = [
 		id: "full-circle",
 		name: { hr: "2 · Puni krug: banka → banka", en: "2 · Full circle: bank → bank" },
 		description: {
-			hr: "Cijeli krug: on-ramp, KYC na vlastitom Monerium računu, potpisani redeem i besplatni SEPA Instant off-ramp natrag u banku. 50 € ode — 50 € se vrati.",
-			en: "The whole circle: on-ramp, KYC on an own Monerium account, a signed redeem and a free SEPA Instant off-ramp back to the bank. €50 leaves — €50 comes back.",
+			hr: "Cijeli krug: on-ramp, KYC na vlastitom Monerium računu, potpisani redeem i besplatni SEPA Instant off-ramp natrag u istu banku iz koje je krug krenuo. 50 € ode — 50 € se vrati.",
+			en: "The whole circle: on-ramp, KYC on an own Monerium account, a signed redeem and a free SEPA Instant off-ramp back to the very bank the circle started from. €50 leaves — €50 comes back.",
 		},
 		initialAmount: 50,
 		steps: [
@@ -671,8 +689,8 @@ export const scenarios: Scenario[] = [
 		id: "gnosis-pay",
 		name: { hr: "5 · Gnosis Pay VISA grana", en: "5 · Gnosis Pay VISA branch" },
 		description: {
-			hr: "Alternativna grana (u pripremi): besplatna virtualna VISA na vlastitom GP Safeu, punjenje EURe transferom s korisnikove adrese i plaćanje karticom na POS-u.",
-			en: "The alternative branch (in preparation): a free virtual VISA on the user's own GP Safe, funded by an EURe transfer from the user's address, then a card payment at the POS.",
+			hr: "Alternativna grana (u pripremi): besplatna virtualna VISA na vlastitom GP Safeu, punjenje EURe transferom, plaćanje na POS-u — a ostatkom se karticom besplatno napuni Revolut i krug se vrti dalje.",
+			en: "The alternative branch (in preparation): a free virtual VISA on the user's own GP Safe, funded by an EURe transfer, a POS payment — and the rest tops Revolut back up via the card for free, so the circle keeps spinning.",
 		},
 		initialAmount: 25,
 		steps: [
@@ -680,6 +698,7 @@ export const scenarios: Scenario[] = [
 			{ t: "issueGnosisPayVisa" },
 			{ t: "fundGnosisPay", amount: 25 },
 			{ t: "gnosisPayCardSpend", amount: 12.5 },
+			{ t: "topupRevolutFromGnosisPay", amount: 12.5 },
 		],
 	},
 	{
@@ -726,9 +745,9 @@ const rejectInsufficient: L10n = {
 
 export function simulate(scenario: Scenario): SimStep[] {
 	const balances = Object.fromEntries(nodes.map((n) => [n.id, 0])) as Record<NodeId, number>;
-	balances.hrBank = scenario.initialAmount;
+	balances.bank = scenario.initialAmount;
 
-	let location: NodeId = "hrBank";
+	let location: NodeId = "bank";
 	const sponsoredBy: Partial<Record<FeePayer, number>> = {};
 	const steps: SimStep[] = [];
 
@@ -785,4 +804,20 @@ export function simulate(scenario: Scenario): SimStep[] {
 /** sum of all balances — must stay equal to initialAmount at every step (1:1, no leakage) */
 export function totalBalance(balances: Record<NodeId, number>): number {
 	return Math.round(Object.values(balances).reduce((a, b) => a + b, 0) * 100) / 100;
+}
+
+/**
+ * The subset of the full directed graph a scenario actually exercises —
+ * everything else is rendered dimmed so scenarios read as subsets of the whole.
+ */
+export function scenarioSubset(scenario: Scenario): { nodes: Set<NodeId>; edges: Set<EdgeId> } {
+	const nodeSet = new Set<NodeId>();
+	const edgeSet = new Set<EdgeId>();
+	for (const s of scenario.steps) {
+		const t = transitionById[s.t];
+		edgeSet.add(t.edge);
+		if (t.from) nodeSet.add(t.from);
+		if (t.to) nodeSet.add(t.to);
+	}
+	return { nodes: nodeSet, edges: edgeSet };
 }

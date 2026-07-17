@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "@/i18n/config";
 import {
 	scenarios,
+	scenarioSubset,
 	simulate,
 	type FeePayer,
 	type NodeId,
@@ -60,6 +61,7 @@ export default function SimulationPlayer({
 
 	const scenario = scenarios.find((s) => s.id === scenarioId)!;
 	const steps = useMemo(() => simulate(scenario), [scenario]);
+	const subset = useMemo(() => scenarioSubset(scenario), [scenario]);
 	const current: SimStep | undefined = cursor >= 0 ? steps[cursor] : undefined;
 	const atEnd = cursor >= steps.length - 1;
 
@@ -162,6 +164,8 @@ export default function SimulationPlayer({
 					activeNode={current?.status === "ok" ? current.location : undefined}
 					activeEdge={current?.transition.edge}
 					balances={balances}
+					subsetNodes={subset.nodes}
+					subsetEdges={subset.edges}
 				/>
 			</div>
 

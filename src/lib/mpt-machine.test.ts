@@ -3,6 +3,7 @@ import {
 	edges,
 	nodes,
 	scenarios,
+	scenarioSubset,
 	simulate,
 	totalBalance,
 	transitions,
@@ -30,6 +31,23 @@ describe("machine consistency", () => {
 	it("every edge is exercised by at least one transition", () => {
 		const used = new Set(transitions.map((t) => t.edge));
 		for (const e of edges) expect(used.has(e.id)).toBe(true);
+	});
+
+	it("scenarios are proper subsets of the full graph", () => {
+		const onramp = scenarioSubset(scenarios.find((s) => s.id === "onramp")!);
+		expect(onramp.nodes.has("gnosisPay")).toBe(false);
+		expect(onramp.nodes.has("merchant")).toBe(false);
+		expect(onramp.nodes.has("ownMonerium")).toBe(false);
+		expect(onramp.edges.has("e-gp-revolut")).toBe(false);
+
+		const gp = scenarioSubset(scenarios.find((s) => s.id === "gnosis-pay")!);
+		expect(gp.nodes.has("gnosisPay")).toBe(true);
+		expect(gp.edges.has("e-gp-revolut")).toBe(true);
+		expect(gp.nodes.has("ownMonerium")).toBe(false);
+
+		const fullCircle = scenarioSubset(scenarios.find((s) => s.id === "full-circle")!);
+		expect(fullCircle.nodes.has("bank")).toBe(true);
+		expect(fullCircle.edges.has("e-offramp")).toBe(true);
 	});
 });
 
@@ -71,7 +89,7 @@ describe("guard limits", () => {
 	it("a rejected step does not move any money", () => {
 		const first = steps[0]; // cardTopup 9.99 — rejected
 		expect(first.status).toBe("rejected");
-		expect(first.balances.hrBank).toBe(guards.initialAmount);
+		expect(first.balances.bank).toBe(guards.initialAmount);
 		expect(first.balances.revolut).toBe(0);
 	});
 
@@ -84,11 +102,11 @@ describe("guard limits", () => {
 });
 
 describe("terminal states", () => {
-	it("full-circle ends with the full amount back at a European bank", () => {
+	it("full-circle ends with the full amount back at the SAME bank it started from", () => {
 		const fullCircle = scenarios.find((s) => s.id === "full-circle")!;
 		const last = simulate(fullCircle).at(-1)!;
-		expect(last.location).toBe("euBank");
-		expect(last.balances.euBank).toBe(fullCircle.initialAmount);
+		expect(last.location).toBe("bank");
+		expect(last.balances.bank).toBe(fullCircle.initialAmount);
 	});
 
 	it("onramp ends with EURe on the user's Gnosis address", () => {
@@ -98,13 +116,14 @@ describe("terminal states", () => {
 		expect(last.balances.userAddress).toBe(onramp.initialAmount);
 	});
 
-	it("gnosis-pay branch funds the GP Safe from the user's address and spends at the POS", () => {
+	it("gnosis-pay branch funds the GP Safe, spends at the POS and tops Revolut back up", () => {
 		const gp = scenarios.find((s) => s.id === "gnosis-pay")!;
 		const steps = simulate(gp);
 		const last = steps.at(-1)!;
 		expect(last.balances.merchant).toBe(12.5);
-		expect(last.balances.gnosisPay).toBe(12.5);
-		expect(last.balances.userAddress).toBe(0);
+		expect(last.balances.gnosisPay).toBe(0);
+		expect(last.balances.revolut).toBe(12.5);
+		expect(last.location).toBe("revolut");
 		const fund = steps.find((s) => s.transition.id === "fundGnosisPay")!;
 		expect(fund.transition.from).toBe("userAddress");
 	});

@@ -50,12 +50,12 @@ const hr = {
 			{
 				num: "04",
 				title: "EURe kod korisnika i zatvaranje kruga — 0 €",
-				text: "Korisnik slobodno raspolaže EURe: onchain transakcije (gas sponzoriran), MPT checkout intenti (pending → paid na onchain potvrdi, max 10.000 € po intentu) ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB), potpiše redeem i Monerium besplatnim SEPA Instantom vrati novac na bilo koju europsku banku. Krug je zatvoren, end-to-end 0 €.",
+				text: "Korisnik slobodno raspolaže EURe: onchain transakcije (gas sponzoriran), MPT checkout intenti (pending → paid na onchain potvrdi, max 10.000 € po intentu) ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB), potpiše redeem i Monerium besplatnim SEPA Instantom vrati novac na istu banku iz koje je krug krenuo (ili bilo koju drugu s IBAN-om u eurozoni). Krug završava gdje je i počeo, end-to-end 0 €.",
 			},
 		],
 		altTitle: "Alternativna grana: Gnosis Pay VISA (u pripremi)",
 		altText:
-			"Gnosis Pay korisniku deploya vlastiti GP Safe (Delay + Roles moduli) i izdaje besplatnu virtualnu VISA karticu — uz obavezan Sumsub KYC i opcionalni osobni Monerium IBAN. Punjenje kartice je običan EURe transfer s korisnikove adrese preko postojećeg sponzoriranog raila, a Apple Pay / Google Pay rade u Hrvatskoj. Integracija je u pre-pilot pripremi.",
+			"Gnosis Pay korisniku deploya vlastiti GP Safe (Delay + Roles moduli) i izdaje besplatnu virtualnu VISA karticu — uz obavezan Sumsub KYC i opcionalni osobni Monerium IBAN. Punjenje kartice je običan EURe transfer s korisnikove adrese preko postojećeg sponzoriranog raila, a Apple Pay / Google Pay rade u Hrvatskoj. Budući da je GP VISA obična debitna kartica, njome se Revolut može besplatno napuniti natrag — krug se vrti i kroz karticu. Integracija je u pre-pilot pripremi.",
 		liveNote:
 			"MPT rail i checkout intenti rade u produkciji na pay.domovina.ai; donate.domovina.ai je statični QR ulaz na isti rail:",
 		liveLinks: [
@@ -154,12 +154,12 @@ const en: typeof hr = {
 			{
 				num: "04",
 				title: "EURe with the user and closing the circle — €0",
-				text: "The user freely controls the EURe: onchain transactions (gas sponsored), MPT checkout intents (pending → paid on onchain confirmation, max €10,000 per intent), or the off-ramp — open an own Monerium account (KYC/KYB), sign a redeem and Monerium returns the money by free SEPA Instant to any European bank. The circle is closed, end-to-end €0.",
+				text: "The user freely controls the EURe: onchain transactions (gas sponsored), MPT checkout intents (pending → paid on onchain confirmation, max €10,000 per intent), or the off-ramp — open an own Monerium account (KYC/KYB), sign a redeem and Monerium returns the money by free SEPA Instant to the very bank the circle started from (or any other bank with a eurozone IBAN). The circle ends where it began, end-to-end €0.",
 			},
 		],
 		altTitle: "Alternative branch: Gnosis Pay VISA (in preparation)",
 		altText:
-			"Gnosis Pay deploys the user's own GP Safe (Delay + Roles modules) and issues a free virtual VISA card — with mandatory Sumsub KYC and an optional personal Monerium IBAN. Funding the card is a plain EURe transfer from the user's address over the existing sponsored rail, and Apple Pay / Google Pay work in Croatia. The integration is in pre-pilot preparation.",
+			"Gnosis Pay deploys the user's own GP Safe (Delay + Roles modules) and issues a free virtual VISA card — with mandatory Sumsub KYC and an optional personal Monerium IBAN. Funding the card is a plain EURe transfer from the user's address over the existing sponsored rail, and Apple Pay / Google Pay work in Croatia. Since the GP VISA is a regular debit card, it can also top Revolut back up for free — the circle spins through the card too. The integration is in pre-pilot preparation.",
 		liveNote:
 			"The MPT rail and checkout intents run in production at pay.domovina.ai; donate.domovina.ai is a static QR entry to the same rail:",
 		liveLinks: [

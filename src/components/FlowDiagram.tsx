@@ -29,6 +29,7 @@ type MptNodeData = {
 	subtitle: string;
 	badge?: string;
 	active: boolean;
+	dimmed: boolean;
 	balance?: string;
 };
 
@@ -39,12 +40,14 @@ const MptNode = memo(function MptNode({ data }: NodeProps<Node<MptNodeData>>) {
 				data.active
 					? "border-emerald-400 bg-emerald-400/10 shadow-[0_0_30px_rgba(52,211,153,0.25)]"
 					: "border-zinc-700/80 bg-zinc-900/80"
-			}`}
+			} ${data.dimmed ? "opacity-50" : ""}`}
 		>
 			<Handle type="target" position={Position.Top} id="t" className="!bg-emerald-400/60" />
+			<Handle type="target" position={Position.Bottom} id="bt" className="!bg-emerald-400/60" />
 			<Handle type="source" position={Position.Bottom} id="b" className="!bg-emerald-400/60" />
 			<Handle type="source" position={Position.Right} id="r" className="!bg-emerald-400/60" />
 			<Handle type="target" position={Position.Right} id="rt" className="!bg-emerald-400/60" />
+			<Handle type="source" position={Position.Left} id="ls" className="!bg-emerald-400/60" />
 			<Handle type="target" position={Position.Left} id="l" className="!bg-emerald-400/60" />
 			<div className="flex items-start justify-between gap-2">
 				<p className="text-sm font-semibold text-zinc-100">{data.title}</p>
@@ -64,8 +67,11 @@ const MptNode = memo(function MptNode({ data }: NodeProps<Node<MptNodeData>>) {
 
 type MptEdgeData = {
 	active: boolean;
+	dimmed: boolean;
 	/** push the label off the edge midpoint (used to drop rail labels into open space) */
 	labelOffsetY: number;
+	/** place the label at this fraction of the source→target line instead of the path midpoint */
+	labelT?: number;
 };
 
 const MptEdge = memo(function MptEdge({
@@ -90,7 +96,11 @@ const MptEdge = memo(function MptEdge({
 		targetPosition,
 	});
 	const active = data?.active ?? false;
+	const dimmed = data?.dimmed ?? false;
 	const offsetY = data?.labelOffsetY ?? 0;
+	const t = data?.labelT;
+	const lx = t !== undefined ? sourceX + (targetX - sourceX) * t : labelX;
+	const ly = t !== undefined ? sourceY + (targetY - sourceY) * t : labelY;
 	return (
 		<>
 			<BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />
@@ -99,13 +109,13 @@ const MptEdge = memo(function MptEdge({
 					<div
 						style={{
 							position: "absolute",
-							transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + offsetY}px)`,
+							transform: `translate(-50%, -50%) translate(${lx}px, ${ly + offsetY}px)`,
 						}}
-						className={`pointer-events-none max-w-[300px] rounded-lg border px-2 py-1 text-center text-[10px] leading-snug ${
+						className={`pointer-events-none max-w-[300px] rounded-lg border px-2 py-1 text-center text-[10px] leading-snug transition-opacity duration-300 ${
 							active
 								? "border-emerald-400/50 bg-[#09120e] text-emerald-300"
 								: "border-zinc-800 bg-[#09120e]/90 text-zinc-400"
-						}`}
+						} ${dimmed ? "opacity-50" : ""}`}
 					>
 						{label}
 					</div>
@@ -120,26 +130,41 @@ const edgeTypes = { mpt: MptEdge };
 
 export type FlowOrientation = "vertical" | "horizontal";
 
-/** left-to-right layout for wide screens; the main rail is one row, branches sit below */
+/**
+ * Wide-screen layout: the circle is explicit — the rail flows left→right in the
+ * top row, drops to the bottom row at the user's address, and the two return
+ * edges (off-ramp to the bank, GP card top-up to Revolut) climb back up left.
+ */
 const H_POS: Record<NodeId, { x: number; y: number }> = {
-	hrBank: { x: 0, y: 60 },
-	revolut: { x: 340, y: 60 },
-	moneriumMpt: { x: 680, y: 60 },
-	safeRelayer: { x: 1020, y: 60 },
-	userAddress: { x: 1360, y: 60 },
-	ownMonerium: { x: 1700, y: 60 },
-	euBank: { x: 2040, y: 60 },
-	gnosisPay: { x: 850, y: 430 },
-	otherAddress: { x: 1190, y: 430 },
-	merchant: { x: 1530, y: 430 },
+	bank: { x: 0, y: 60 },
+	revolut: { x: 360, y: 60 },
+	moneriumMpt: { x: 720, y: 60 },
+	safeRelayer: { x: 1080, y: 60 },
+	userAddress: { x: 1440, y: 60 },
+	otherAddress: { x: 1800, y: 430 },
+	merchant: { x: 1080, y: 430 },
+	gnosisPay: { x: 720, y: 430 },
+	ownMonerium: { x: 360, y: 430 },
 };
 
-/** edges that drop to the branch row in the horizontal layout (bottom → top) */
-const H_BRANCH: Set<EdgeId> = new Set(["e-p2p", "e-checkout", "e-gp-fund"]);
+/** horizontal-layout edge routing: rail = left→right, drop = down from the rail, up = climb back left */
+const H_KIND: Record<EdgeId, "rail" | "drop" | "up"> = {
+	"e-card": "rail",
+	"e-sepa": "rail",
+	"e-mint": "rail",
+	"e-relay": "rail",
+	"e-p2p": "drop",
+	"e-checkout": "drop",
+	"e-gp-fund": "drop",
+	"e-redeem": "drop",
+	"e-gp-spend": "rail",
+	"e-gp-revolut": "up",
+	"e-offramp": "up",
+};
 
 /** single-column order for phones — everything stacked, near full-size nodes */
 const V_ORDER: NodeId[] = [
-	"hrBank",
+	"bank",
 	"revolut",
 	"moneriumMpt",
 	"safeRelayer",
@@ -148,7 +173,6 @@ const V_ORDER: NodeId[] = [
 	"gnosisPay",
 	"merchant",
 	"ownMonerium",
-	"euBank",
 ];
 
 const V_POS: Record<NodeId, { x: number; y: number }> = Object.fromEntries(
@@ -156,7 +180,13 @@ const V_POS: Record<NodeId, { x: number; y: number }> = Object.fromEntries(
 ) as Record<NodeId, { x: number; y: number }>;
 
 /** non-adjacent connections in the single column — drawn as right-side arcs, no label */
-const V_ARC: Set<EdgeId> = new Set(["e-checkout", "e-gp-fund", "e-redeem"]);
+const V_ARC: Set<EdgeId> = new Set([
+	"e-checkout",
+	"e-gp-fund",
+	"e-redeem",
+	"e-gp-revolut",
+	"e-offramp",
+]);
 
 export interface FlowDiagramProps {
 	locale: Locale;
@@ -165,6 +195,12 @@ export interface FlowDiagramProps {
 	activeEdge?: EdgeId;
 	/** formatted balances per node, shown inside nodes during simulations */
 	balances?: Partial<Record<NodeId, string>>;
+	/**
+	 * the subset of the graph the selected scenario exercises; everything
+	 * outside it renders at half opacity so scenarios read as subsets
+	 */
+	subsetNodes?: Set<NodeId>;
+	subsetEdges?: Set<EdgeId>;
 }
 
 export default function FlowDiagram({
@@ -173,6 +209,8 @@ export default function FlowDiagram({
 	activeNode,
 	activeEdge,
 	balances,
+	subsetNodes,
+	subsetEdges,
 }: FlowDiagramProps) {
 	const horizontal = orientation === "horizontal";
 
@@ -187,60 +225,58 @@ export default function FlowDiagram({
 					subtitle: n.subtitle[locale],
 					badge: n.badge?.[locale],
 					active: n.id === activeNode,
+					dimmed: subsetNodes !== undefined && !subsetNodes.has(n.id),
 					balance: balances?.[n.id],
 				},
 				draggable: false,
 				connectable: false,
 			})),
-		[locale, horizontal, activeNode, balances],
+		[locale, horizontal, activeNode, balances, subsetNodes],
 	);
 
 	const edges: Edge<MptEdgeData>[] = useMemo(
 		() =>
 			flowEdges.map((e) => {
 				const active = e.id === activeEdge;
+				const dimmed = subsetEdges !== undefined && !subsetEdges.has(e.id);
+				let sourceHandle: string;
+				let targetHandle: string;
+				let label: string | undefined = e.label[locale];
+				let labelOffsetY = 0;
+				let labelT: number | undefined;
 				if (horizontal) {
-					const branch = H_BRANCH.has(e.id);
-					return {
-						id: e.id,
-						type: "mpt" as const,
-						source: e.source,
-						target: e.target,
-						// the rail flows left→right, branches drop down to the second row
-						sourceHandle: branch ? "b" : "r",
-						targetHandle: branch ? "t" : "l",
-						label: e.label[locale],
-						animated: active,
-						data: {
-							active,
-							// drop rail labels below the cards, into the band between the two rows
-							labelOffsetY: branch ? 0 : 96,
-						},
-						markerEnd: {
-							type: MarkerType.ArrowClosed,
-							color: active ? "#34d399" : "#71717a",
-							width: 22,
-							height: 22,
-						},
-						style: {
-							stroke: active ? "#34d399" : "#3f3f46",
-							strokeWidth: active ? 2.5 : 1.5,
-						},
-					};
+					const kind = H_KIND[e.id];
+					if (kind === "rail") {
+						sourceHandle = "r";
+						targetHandle = "l";
+						labelOffsetY = 96; // drop rail labels into the band between the rows
+					} else if (kind === "drop") {
+						sourceHandle = "b";
+						targetHandle = "t";
+						labelT = 0.78; // pull fan-out labels toward their targets so they don't collide
+					} else {
+						sourceHandle = "ls";
+						targetHandle = "bt";
+					}
+				} else if (V_ARC.has(e.id)) {
+					// skip connections arc along the right side of the single column
+					sourceHandle = "r";
+					targetHandle = "rt";
+					label = undefined;
+				} else {
+					sourceHandle = "b";
+					targetHandle = "t";
 				}
-				// vertical single column: adjacent hops flow top→bottom with a label
-				// between the cards; skip connections arc along the right side
-				const arc = V_ARC.has(e.id);
 				return {
 					id: e.id,
 					type: "mpt" as const,
 					source: e.source,
 					target: e.target,
-					sourceHandle: arc ? "r" : "b",
-					targetHandle: arc ? "rt" : "t",
-					label: arc ? undefined : e.label[locale],
+					sourceHandle,
+					targetHandle,
+					label,
 					animated: active,
-					data: { active, labelOffsetY: 0 },
+					data: { active, dimmed, labelOffsetY, labelT },
 					markerEnd: {
 						type: MarkerType.ArrowClosed,
 						color: active ? "#34d399" : "#71717a",
@@ -250,10 +286,12 @@ export default function FlowDiagram({
 					style: {
 						stroke: active ? "#34d399" : "#3f3f46",
 						strokeWidth: active ? 2.5 : 1.5,
+						opacity: dimmed ? 0.5 : 1,
+						transition: "opacity 300ms",
 					},
 				};
 			}),
-		[locale, horizontal, activeEdge],
+		[locale, horizontal, activeEdge, subsetEdges],
 	);
 
 	return (
