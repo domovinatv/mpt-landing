@@ -4,7 +4,7 @@ const hr = {
 	meta: {
 		title: "Mint Pay Transfer — 0% naknade, od početka do kraja",
 		description:
-			"MPT je javni projekt koji dokumentira i pokazuje da su transferi novca bez ijedne naknade tehnički mogući — end-to-end, s vizualizacijom toka novca i simulacijama korak po korak.",
+			"MPT (Mint Pay Transfer) je proizvod tvrtke ITalk d.o.o.: transferi novca bez ijedne naknade za korisnika — end-to-end, s dokumentiranim tokom novca i simulacijama korak po korak. Rail radi u produkciji na pay.domovina.ai.",
 	},
 	nav: {
 		flow: "Tok novca",
@@ -13,7 +13,7 @@ const hr = {
 		contact: "Kontakt",
 	},
 	hero: {
-		eyebrow: "Mint Pay Transfer · javni demonstracijski projekt",
+		eyebrow: "Mint Pay Transfer · proizvod tvrtke ITalk d.o.o.",
 		title: "Slanje novca bez ijedne naknade.",
 		titleAccent: "Od početka do kraja.",
 		subtitle:
@@ -177,9 +177,40 @@ const hr = {
 		button: "kontakt@mpt.hr",
 	},
 	footer: {
-		tagline: "Javni projekt koji pokazuje da su transferi bez naknada mogući.",
-		disclaimer:
-			"MPT je demonstracijski projekt, a ne licencirana platna usluga.",
+		columns: [
+			{
+				title: "Proizvod",
+				links: [
+					{ label: "Tok novca", href: "#flow" },
+					{ label: "Zašto danas", href: "#why" },
+					{ label: "Simulacije", href: "#sim" },
+					{ label: "Kontakt", href: "#contact" },
+				],
+			},
+			{
+				title: "Produkcija",
+				links: [
+					{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
+					{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+				],
+			},
+			{
+				title: "Tvrtka",
+				links: [
+					{ label: "airkuna.com", href: "https://airkuna.com" },
+					{ label: "ITalk d.o.o.", href: "https://italk.hr" },
+				],
+			},
+		],
+		note: "Napomena: MPT rail i checkout intenti rade u produkciji (pay.domovina.ai); Gnosis Pay grana iskreno je označena kao integracija u pripremi. MPT nije licencirana platna usluga — ITalk je non-custodial software provider, a regulirane funkcije (izdavanje e-novca, KYC) obavlja licencirani izdavatelj (Monerium, EMI / MiCA EMT). Ova stranica nije investicijski ni pravni savjet.",
+		imprintLead: "MPT (Mint Pay Transfer)",
+		imprint:
+			"je proizvod tvrtke ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Hrvatska · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Trgovački sud u Zagrebu · direktor: Matija Stepanić",
+		imprintLinks: [
+			{ label: "kontakt@mpt.hr", href: "mailto:kontakt@mpt.hr" },
+			{ label: "italk.hr", href: "https://italk.hr" },
+		],
+		copyright: "MPT / ITalk d.o.o.",
 	},
 	langSwitch: { label: "EN", href: "/en", ariaLabel: "Switch to English" },
 };
@@ -188,7 +219,7 @@ const en: typeof hr = {
 	meta: {
 		title: "Mint Pay Transfer — 0% fees, end to end",
 		description:
-			"MPT is a public project documenting and demonstrating that zero-fee money transfers are technically possible — end-to-end, with a visualized money flow and step-by-step simulations.",
+			"MPT (Mint Pay Transfer) is a product by ITalk d.o.o.: money transfers with zero fees for the user — end-to-end, with a documented money flow and step-by-step simulations. The rail runs in production at pay.domovina.ai.",
 	},
 	nav: {
 		flow: "Money flow",
@@ -197,7 +228,7 @@ const en: typeof hr = {
 		contact: "Contact",
 	},
 	hero: {
-		eyebrow: "Mint Pay Transfer · a public demonstration project",
+		eyebrow: "Mint Pay Transfer · a product by ITalk d.o.o.",
 		title: "Send money with zero fees.",
 		titleAccent: "End to end.",
 		subtitle:
@@ -361,8 +392,40 @@ const en: typeof hr = {
 		button: "kontakt@mpt.hr",
 	},
 	footer: {
-		tagline: "A public project demonstrating that zero-fee transfers are possible.",
-		disclaimer: "MPT is a demonstration project, not a licensed payment service.",
+		columns: [
+			{
+				title: "Product",
+				links: [
+					{ label: "Money flow", href: "#flow" },
+					{ label: "Why now", href: "#why" },
+					{ label: "Simulations", href: "#sim" },
+					{ label: "Contact", href: "#contact" },
+				],
+			},
+			{
+				title: "Production",
+				links: [
+					{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
+					{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+				],
+			},
+			{
+				title: "Company",
+				links: [
+					{ label: "airkuna.com", href: "https://airkuna.com" },
+					{ label: "ITalk d.o.o.", href: "https://italk.hr" },
+				],
+			},
+		],
+		note: "Note: the MPT rail and checkout intents run in production (pay.domovina.ai); the Gnosis Pay branch is honestly labeled as an integration in preparation. MPT is not a licensed payment service — ITalk is a non-custodial software provider, and regulated functions (e-money issuance, KYC) are performed by a licensed issuer (Monerium, EMI / MiCA EMT). This page is not investment or legal advice.",
+		imprintLead: "MPT (Mint Pay Transfer)",
+		imprint:
+			"is a product of ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Croatia · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Commercial Court in Zagreb · director: Matija Stepanić",
+		imprintLinks: [
+			{ label: "kontakt@mpt.hr", href: "mailto:kontakt@mpt.hr" },
+			{ label: "italk.hr", href: "https://italk.hr" },
+		],
+		copyright: "MPT / ITalk d.o.o.",
 	},
 	langSwitch: { label: "HR", href: "/hr", ariaLabel: "Prebaci na hrvatski" },
 };

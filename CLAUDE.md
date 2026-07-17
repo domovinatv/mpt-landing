@@ -1,9 +1,12 @@
 # mpt-landing — CLAUDE.md
 
-Landing za **MPT (Mint Pay Transfer)**, live na **https://mpt.hr**. Javni demonstracijski
-projekt: dokazuje da su end-to-end transferi s 0% naknada tehnički mogući. Stranica je
-isključivo dokumentacija toka novca — tekstualno + interaktivni usmjereni dijagram +
-simulacije korak po korak. Nije licencirana platna usluga (disclaimer u footeru).
+Landing za **MPT (Mint Pay Transfer)**, live na **https://mpt.hr**. Pozicioniran kao
+**proizvod tvrtke ITalk d.o.o.** (isti nastup kao airkuna.com): end-to-end transferi s
+0% naknada za korisnika, dokumentirani tok novca + interaktivni dijagram + simulacije.
+Footer nosi airkuna-stil impresum (ITalk d.o.o., OIB 54872935051, adresa, direktor —
+podaci preuzeti doslovno s airkuna.com footera, ne izmišljati) i poštenu napomenu:
+MPT **nije licencirana platna usluga** — ITalk je non-custodial software provider,
+regulirane funkcije obavlja Monerium (EMI / MiCA EMT); GP grana označena "u pripremi".
 
 ## Arhitektura — jedan izvor istine
 

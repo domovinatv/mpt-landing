@@ -304,17 +304,62 @@ function Cta({ dict }: { dict: Dictionary }) {
 }
 
 function Footer({ dict }: { dict: Dictionary }) {
+	const external = (href: string) => href.startsWith("http");
 	return (
 		<footer className="relative z-10 border-t border-line">
-			<div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 py-10 text-center text-sm text-mute">
-				<div className="flex items-center gap-2">
-					<Logo />
-					<span className="font-serif font-semibold text-navy">Mint Pay Transfer</span>
+			<div className="mx-auto max-w-6xl px-6 pb-10 pt-14 text-sm text-mute">
+				<div className="flex flex-wrap items-start justify-between gap-10">
+					<a href="#" className="flex items-center gap-2.5">
+						<Logo />
+						<span className="font-serif text-lg font-semibold tracking-tight text-navy">
+							Mint Pay Transfer
+						</span>
+					</a>
+					<div className="flex flex-wrap gap-10">
+						{dict.footer.columns.map((col) => (
+							<div key={col.title} className="min-w-32">
+								<p className="font-semibold text-navy">{col.title}</p>
+								<ul className="mt-2 space-y-1.5">
+									{col.links.map((link) => (
+										<li key={link.href}>
+											<a
+												href={link.href}
+												{...(external(link.href)
+													? { target: "_blank", rel: "noopener noreferrer" }
+													: {})}
+												className="transition hover:text-navy"
+											>
+												{link.label}
+											</a>
+										</li>
+									))}
+								</ul>
+							</div>
+						))}
+					</div>
 				</div>
-				<p>{dict.footer.tagline}</p>
-				<p className="text-xs text-mute/80">
-					© {new Date().getFullYear()} mpt.hr · {dict.footer.disclaimer}
-				</p>
+				<div className="mt-10 space-y-4 border-t border-line pt-6 text-xs leading-relaxed text-mute/90">
+					<p>{dict.footer.note}</p>
+					<p>
+						<span className="font-semibold text-navy">{dict.footer.imprintLead}</span>{" "}
+						{dict.footer.imprint}
+						{dict.footer.imprintLinks.map((link) => (
+							<span key={link.href}>
+								{" · "}
+								<a
+									href={link.href}
+									{...(external(link.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+									className="font-medium text-navy underline decoration-gold/50 underline-offset-4 transition hover:text-navy-700"
+								>
+									{link.label}
+								</a>
+							</span>
+						))}
+					</p>
+					<p>
+						© {new Date().getFullYear()} {dict.footer.copyright}
+					</p>
+				</div>
 			</div>
 		</footer>
 	);
