@@ -6,6 +6,7 @@ import {
 	BaseEdge,
 	EdgeLabelRenderer,
 	Handle,
+	MarkerType,
 	Position,
 	ReactFlow,
 	getBezierPath,
@@ -78,6 +79,7 @@ const MptEdge = memo(function MptEdge({
 	style,
 	label,
 	data,
+	markerEnd,
 }: EdgeProps<Edge<MptEdgeData>>) {
 	const [path, labelX, labelY] = getBezierPath({
 		sourceX,
@@ -91,7 +93,7 @@ const MptEdge = memo(function MptEdge({
 	const offsetY = data?.labelOffsetY ?? 0;
 	return (
 		<>
-			<BaseEdge id={id} path={path} style={style} />
+			<BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />
 			{label && (
 				<EdgeLabelRenderer>
 					<div
@@ -214,6 +216,12 @@ export default function FlowDiagram({
 							// drop rail labels below the cards, into the band between the two rows
 							labelOffsetY: branch ? 0 : 96,
 						},
+						markerEnd: {
+							type: MarkerType.ArrowClosed,
+							color: active ? "#34d399" : "#71717a",
+							width: 22,
+							height: 22,
+						},
 						style: {
 							stroke: active ? "#34d399" : "#3f3f46",
 							strokeWidth: active ? 2.5 : 1.5,
@@ -233,6 +241,12 @@ export default function FlowDiagram({
 					label: arc ? undefined : e.label[locale],
 					animated: active,
 					data: { active, labelOffsetY: 0 },
+					markerEnd: {
+						type: MarkerType.ArrowClosed,
+						color: active ? "#34d399" : "#71717a",
+						width: 22,
+						height: 22,
+					},
 					style: {
 						stroke: active ? "#34d399" : "#3f3f46",
 						strokeWidth: active ? 2.5 : 1.5,
