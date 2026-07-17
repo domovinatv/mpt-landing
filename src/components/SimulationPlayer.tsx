@@ -12,6 +12,7 @@ import {
 } from "@/lib/mpt-machine";
 import { cardFee, SEPA_FEE_MAX, SEPA_FEE_MIN } from "@/lib/market-fees";
 import FlowDiagram, { type FlowOrientation } from "./FlowDiagram";
+import MermaidFlow from "./MermaidFlow";
 import SavingsCalculator from "./SavingsCalculator";
 
 export interface SimulationPlayerLabels {
@@ -29,6 +30,7 @@ export interface SimulationPlayerLabels {
 	finished: string;
 	logEmpty: string;
 	todayCompare: string;
+	todayAmount: string;
 	todayCard: string;
 	todaySepa: string;
 	todayUpTo: string;
@@ -68,6 +70,9 @@ export default function SimulationPlayer({
 	const [scenarioId, setScenarioId] = useState(scenarios[0].id);
 	const [cursor, setCursor] = useState(-1); // -1 = before the first step
 	const [playing, setPlaying] = useState(false);
+	// amount for the "same payment today" fee comparison — €1 default because
+	// that's where the fixed intermediary fees hurt the most
+	const [compareAmount, setCompareAmount] = useState(1);
 	const orientation = useOrientation();
 
 	const scenario = scenarios.find((s) => s.id === scenarioId)!;
@@ -178,17 +183,28 @@ export default function SimulationPlayer({
 				</span>
 			</div>
 
-			{/* diagram — full width; horizontal rail on wide screens, vertical on mobile */}
-			<div className="mt-4 h-[1560px] w-full overflow-hidden rounded-2xl border border-line bg-soft lg:h-[560px] 2xl:h-[640px]">
-				<FlowDiagram
-					locale={locale}
-					orientation={orientation}
-					activeNode={current ? (current.status === "ok" ? current.location : undefined) : "bank"}
-					activeEdge={current?.transition.edge}
-					balances={balances}
-					subsetNodes={subset.nodes}
-					subsetEdges={subset.edges}
-				/>
+			{/* diagram — React Flow rail on wide screens, mermaid column on mobile */}
+			<div className="mt-4 w-full overflow-hidden rounded-2xl border border-line bg-soft lg:h-[560px] 2xl:h-[640px]">
+				{orientation === "horizontal" ? (
+					<FlowDiagram
+						locale={locale}
+						orientation="horizontal"
+						activeNode={current ? (current.status === "ok" ? current.location : undefined) : "bank"}
+						activeEdge={current?.transition.edge}
+						balances={balances}
+						subsetNodes={subset.nodes}
+						subsetEdges={subset.edges}
+					/>
+				) : (
+					<MermaidFlow
+						locale={locale}
+						activeNode={current ? (current.status === "ok" ? current.location : undefined) : "bank"}
+						activeEdge={current?.transition.edge}
+						balances={balances}
+						subsetNodes={subset.nodes}
+						subsetEdges={subset.edges}
+					/>
+				)}
 			</div>
 
 			{/* log + fee counter */}
@@ -273,18 +289,34 @@ export default function SimulationPlayer({
 						<p className="text-[11px] font-bold uppercase tracking-wider text-mute">
 							{labels.todayCompare}
 						</p>
-						<div className="mt-2 flex items-baseline justify-between gap-2 text-xs">
+						<div className="mt-2 flex flex-wrap items-center gap-1.5">
+							<span className="mr-1 text-[11px] text-mute">{labels.todayAmount}:</span>
+							{[1, 5, 10, 100].map((amount) => (
+								<button
+									key={amount}
+									onClick={() => setCompareAmount(amount)}
+									className={`rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-semibold transition ${
+										amount === compareAmount
+											? "border-gold bg-gold-soft text-[#7a5a12]"
+											: "border-line text-mute hover:border-gold hover:text-ink"
+									}`}
+								>
+									{amount} €
+								</button>
+							))}
+						</div>
+						<div className="mt-2.5 flex items-baseline justify-between gap-2 text-xs">
 							<span className="text-mute">{labels.todayCard}</span>
 							<span className="shrink-0 font-mono font-semibold text-red">
-								{eur(locale, cardFee(scenario.initialAmount))} ·{" "}
-								{pct(locale, cardFee(scenario.initialAmount) / scenario.initialAmount)}
+								{eur(locale, cardFee(compareAmount))} ·{" "}
+								{pct(locale, cardFee(compareAmount) / compareAmount)}
 							</span>
 						</div>
 						<div className="mt-1.5 flex items-baseline justify-between gap-2 text-xs">
 							<span className="text-mute">{labels.todaySepa}</span>
 							<span className="shrink-0 font-mono font-semibold text-red">
 								{eur(locale, SEPA_FEE_MIN)}–{eur(locale, SEPA_FEE_MAX)} · {labels.todayUpTo}{" "}
-								{pct(locale, SEPA_FEE_MAX / scenario.initialAmount)}
+								{pct(locale, SEPA_FEE_MAX / compareAmount)}
 							</span>
 						</div>
 					</div>

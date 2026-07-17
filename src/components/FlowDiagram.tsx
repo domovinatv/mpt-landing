@@ -321,6 +321,7 @@ export default function FlowDiagram({
 			nodesDraggable={false}
 			nodesConnectable={false}
 			elementsSelectable={false}
+			proOptions={{ hideAttribution: true }}
 			colorMode="light"
 			style={{ background: "transparent" }}
 		>

@@ -88,10 +88,14 @@ Copy dijagrama/simulacija: `L10n` polja u `mpt-machine.ts`.
 
 ## Responsive dijagram
 
-- **≥1024px**: horizontalni kružni layout (gornji red slijeva nadesno, donji red grane,
-  povratne veze penju se natrag) — pozicije u `H_POS`, rute po `H_KIND` (rail/drop/up)
-- **<1024px**: jedan vertikalni stupac (`V_ORDER`), skip-veze kao desni lukovi (`V_ARC`,
-  bez labela — informacija je u dnevniku simulacije)
+- **≥1024px**: React Flow horizontalni kružni layout (gornji red slijeva nadesno, donji
+  red grane, povratne veze penju se natrag) — pozicije u `H_POS`, rute po `H_KIND`
+  (rail/drop/up); attribution watermark skriven (`proOptions.hideAttribution`)
+- **<1024px**: **MermaidJS** (`MermaidFlow.tsx`, dinamički import — desktop ne skida
+  mermaid bundle): `flowchart TB` generiran iz istih machine nodes/edges, naslov + živi
+  saldo u čvoru, bez edge labela (priča je u dnevniku); klase act/sub/dim prate ista
+  tri stanja. Vertikalni ReactFlow put (`V_ORDER`/`V_ARC`) postoji u kodu ali se više
+  ne koristi.
 - custom edge s labelOffsetY (rail labeli u pojas između redova) i labelT (fan-out labeli
   povučeni prema cilju da se ne sudaraju)
 - tri vizualna stanja iz `scenarioSubset`: ne-sudjelujući čvorovi/veze dimmed (opacity
