@@ -94,7 +94,8 @@ radius 18px kartice / 999px pillovi, meke plavkaste sjene, navy+gold radijalni g
 za tamne trake (hero kartica, CTA). **Samo light tema** — airkuna-web nema dark mode.
 Tokeni u `globals.css` (`@theme inline` → Tailwind klase `bg-paper`, `text-navy`,
 `border-line`, `bg-gold-soft`…). Dnevnik simulacija nema unutarnji scroll (raste u
-dokumentu; auto-play prati zadnji korak `scrollIntoView`-om).
+dokumentu) i obrnuto je kronološki — najnoviji korak na vrhu, na fiksnoj poziciji odmah
+ispod dijagrama, pa auto-scroll nije potreban (posjetitelj gleda graf dok simulacija ide).
 
 ## Otvoreno / TODO
 

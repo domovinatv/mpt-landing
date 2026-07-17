@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "@/i18n/config";
 import {
 	scenarios,
@@ -56,7 +56,6 @@ export default function SimulationPlayer({
 	const [scenarioId, setScenarioId] = useState(scenarios[0].id);
 	const [cursor, setCursor] = useState(-1); // -1 = before the first step
 	const [playing, setPlaying] = useState(false);
-	const lastStepRef = useRef<HTMLDivElement>(null);
 	const orientation = useOrientation();
 
 	const scenario = scenarios.find((s) => s.id === scenarioId)!;
@@ -74,13 +73,6 @@ export default function SimulationPlayer({
 		const id = setInterval(() => setCursor((c) => Math.min(c + 1, steps.length - 1)), 1700);
 		return () => clearInterval(id);
 	}, [playing, atEnd, steps.length]);
-
-	// during autoplay keep the newest log entry in view via the page scroll —
-	// the log itself has no inner scrollbar
-	useEffect(() => {
-		if (!playing) return;
-		lastStepRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-	}, [cursor, playing]);
 
 	const selectScenario = (id: string) => {
 		setScenarioId(id);
@@ -175,12 +167,16 @@ export default function SimulationPlayer({
 
 			{/* log + fee counter */}
 			<div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+				{/* newest step first — it stays in a fixed spot right below the diagram
+				    while the simulation plays, so no scrolling is needed to follow it */}
 				<div className="min-h-40 space-y-2 rounded-2xl border border-line bg-soft p-3">
 					{cursor < 0 && <p className="p-2 text-sm text-mute">{labels.logEmpty}</p>}
-					{steps.slice(0, cursor + 1).map((step) => (
+					{atEnd && cursor >= 0 && (
+						<p className="p-2 text-center text-xs font-medium text-green">{labels.finished}</p>
+					)}
+					{steps.slice(0, cursor + 1).reverse().map((step) => (
 						<div
 							key={step.index}
-							ref={step.index === cursor ? lastStepRef : undefined}
 							className={`rounded-xl border p-3 text-sm ${
 								step.status === "rejected"
 									? "border-red/30 bg-red-soft"
@@ -216,9 +212,6 @@ export default function SimulationPlayer({
 							)}
 						</div>
 					))}
-					{atEnd && cursor >= 0 && (
-						<p className="p-2 text-center text-xs font-medium text-green">{labels.finished}</p>
-					)}
 				</div>
 
 				<div className="flex flex-col gap-2 self-start">
