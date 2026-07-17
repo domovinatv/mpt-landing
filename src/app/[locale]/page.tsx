@@ -188,7 +188,7 @@ function Flow({ dict }: { dict: Dictionary }) {
 
 function Simulations({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 	return (
-		<section id="sim" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+		<section id="sim" className="relative z-10 mx-auto w-full max-w-[120rem] scroll-mt-24 px-4 py-20 sm:px-6 lg:px-10">
 			<SectionHeading title={dict.sim.title} subtitle={dict.sim.subtitle} />
 			<div className="mt-12">
 				<SimulationPlayer locale={locale} labels={dict.sim.labels} />
