@@ -10,7 +10,9 @@ import {
 	type NodeId,
 	type SimStep,
 } from "@/lib/mpt-machine";
+import { cardFee, SEPA_FEE_MAX, SEPA_FEE_MIN } from "@/lib/market-fees";
 import FlowDiagram, { type FlowOrientation } from "./FlowDiagram";
+import SavingsCalculator from "./SavingsCalculator";
 
 export interface SimulationPlayerLabels {
 	pickScenario: string;
@@ -26,12 +28,22 @@ export interface SimulationPlayerLabels {
 	sponsorNames: Record<Exclude<FeePayer, "none">, string>;
 	finished: string;
 	logEmpty: string;
+	todayCompare: string;
+	todayCard: string;
+	todaySepa: string;
+	todayUpTo: string;
 }
 
 const eur = (locale: Locale, value: number) =>
 	new Intl.NumberFormat(locale === "hr" ? "hr-HR" : "en-IE", {
 		style: "currency",
 		currency: "EUR",
+	}).format(value);
+
+const pct = (locale: Locale, value: number) =>
+	new Intl.NumberFormat(locale === "hr" ? "hr-HR" : "en-IE", {
+		style: "percent",
+		maximumFractionDigits: 1,
 	}).format(value);
 
 function useOrientation(): FlowOrientation {
@@ -214,7 +226,7 @@ export default function SimulationPlayer({
 					))}
 				</div>
 
-				<div className="flex flex-col gap-2 self-start">
+				<div className="flex flex-col gap-3 self-start">
 					<div className="flex items-center justify-between rounded-2xl border border-gold/40 bg-gold-soft/50 px-4 py-3">
 						<span className="text-xs text-mute">{labels.userFees}</span>
 						<span className="font-mono text-lg font-bold text-navy">
@@ -232,6 +244,29 @@ export default function SimulationPlayer({
 								.join(" · ")}
 						</p>
 					)}
+
+					{/* what the same payment costs today via the incumbent channels */}
+					<div className="rounded-2xl border border-line bg-white px-4 py-3">
+						<p className="text-[11px] font-bold uppercase tracking-wider text-mute">
+							{labels.todayCompare}
+						</p>
+						<div className="mt-2 flex items-baseline justify-between gap-2 text-xs">
+							<span className="text-mute">{labels.todayCard}</span>
+							<span className="shrink-0 font-mono font-semibold text-red">
+								{eur(locale, cardFee(scenario.initialAmount))} ·{" "}
+								{pct(locale, cardFee(scenario.initialAmount) / scenario.initialAmount)}
+							</span>
+						</div>
+						<div className="mt-1.5 flex items-baseline justify-between gap-2 text-xs">
+							<span className="text-mute">{labels.todaySepa}</span>
+							<span className="shrink-0 font-mono font-semibold text-red">
+								{eur(locale, SEPA_FEE_MIN)}–{eur(locale, SEPA_FEE_MAX)} · {labels.todayUpTo}{" "}
+								{pct(locale, SEPA_FEE_MAX / scenario.initialAmount)}
+							</span>
+						</div>
+					</div>
+
+					<SavingsCalculator locale={locale} />
 				</div>
 			</div>
 		</div>

@@ -47,6 +47,17 @@ Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
   obrnuti smjer GP VISA → Revolut jest besplatni kartični top-up
 - `donate.domovina.ai` je **statični QR ulaz** (bez backenda/intenta)
 
+## Usporedba naknada ("Zašto danas" + kalkulator uštede)
+
+Sekcija `#why` na landingu, usporedba "ista uplata danas" u sidebaru simulacija i
+`SavingsCalculator` (input broja transakcija → ušteda maloprodaje dnevno/mjesečno/
+godišnje) koriste tržišne konstante iz `src/lib/market-fees.ts`. **SSOT za te stope**
+je analiza isplativosti: lom.ff.hr/dokumenti/isplativost (vendorirana u
+`~/git/ss/ss-novcanik-prototip/docs/compliance/isplativost-wallet.md`): kartica =
+Stripe EEA 1,5% + 0,25 € (srpanj 2026.), SEPA = fiksni nalog HR banaka 0,25–0,40 €
+(plaća pošiljatelj). Ne izmišljati druge stope; kalkulator je uvijek označen kao
+ilustrativan.
+
 ## Stack i deploy
 
 Next.js 16 (App Router, Tailwind 4) + `@opennextjs/cloudflare` na **Cloudflare Workers**.

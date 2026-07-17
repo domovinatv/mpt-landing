@@ -8,6 +8,7 @@ const hr = {
 	},
 	nav: {
 		flow: "Tok novca",
+		why: "Zašto danas",
 		sim: "Simulacije",
 		contact: "Kontakt",
 	},
@@ -63,6 +64,82 @@ const hr = {
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
 		],
 	},
+	why: {
+		title: "Zašto ovo danas ima smisla",
+		subtitle:
+			"Svako kartično plaćanje u maloprodaji i svaki SEPA nalog iz klasične hrvatske banke nosi naknadu posrednika. MPT pokazuje da lokalna ekonomija može imati suvereni platni sustav: novac putuje izravno od platitelja do primatelja — bez postotka koji odlazi kartičnim shemama i procesorima, bez fiksnog bankovnog naloga — a svaki transfer ostavlja javni, provjerljivi trag.",
+		tableHead: {
+			channel: "Kanal",
+			fee: "Naknada po transakciji",
+			at2: "Na 2 €",
+			at5: "Na 5 €",
+			at100: "Na 100 €",
+		},
+		channels: [
+			{
+				name: "MPT rail (EURe, Gnosis)",
+				fee: "0 € za korisnika (gas ~0,001 €, sponzoriran)",
+				at2: "0,00 € · 0%",
+				at5: "0,00 € · 0%",
+				at100: "0,00 € · 0%",
+				tone: "win" as const,
+			},
+			{
+				name: "Kartica (Stripe EEA)",
+				fee: "1,5% + 0,25 €",
+				at2: "0,28 € · 14%",
+				at5: "0,33 € · 6,5%",
+				at100: "1,75 € · 1,75%",
+				tone: "leak" as const,
+			},
+			{
+				name: "SEPA nalog (HR banke)",
+				fee: "0,25–0,40 € fiksno — plaća pošiljatelj",
+				at2: "0,40 € · do 20%",
+				at5: "0,40 € · do 8%",
+				at100: "0,40 € · 0,4%",
+				tone: "warn" as const,
+			},
+		],
+		points: [
+			{
+				title: "Fiksna naknada ubija mikrouplate",
+				text: "Na uplati od 2 € kartična naknada iznosi 14%, a fiksni bankovni nalog i do 20%. Male, česte uplate — upravo one od kojih živi lokalna maloprodaja — danas su najskuplje. Jedino transfer bez fiksnog dijela ni na jednoj strani čini mikrouplate isplativima.",
+			},
+			{
+				title: "Novac ostaje u lokalnoj ekonomiji",
+				text: "Postotak svake kartične transakcije odlazi shemama i procesorima izvan lokalnog kruga. Na MPT railu puni iznos stiže primatelju — razlika koja se na tisućama transakcija akumulira u ozbiljan novac koji ostaje trgovcu i zajednici.",
+			},
+			{
+				title: "Suverenost bez posrednika",
+				text: "Rail počiva na reguliranom e-novcu (EURe, licencirani izdavatelj Monerium) u samoskrbništvu korisnika. Između platitelja i primatelja nema posrednika koji naplaćuje maržu — lokalna ekonomija dobiva platni sustav kojim sama raspolaže.",
+			},
+			{
+				title: "Javni, provjerljivi trag",
+				text: "Za razliku od gotovine i kartičnih obračuna, svaki transfer javno je vidljiv i auditabilan onchain — transparentnost za kupca, trgovca i zajednicu, bez odricanja od samoskrbništva.",
+			},
+		],
+		sourceNote:
+			"Stope: Stripe EEA cjenik za domaće kartice (srpanj 2026.) i tipični fiksni SEPA nalozi klasičnih hrvatskih banaka (ZABA, PBZ, Erste, OTP, HPB). Izvor i metodologija:",
+		sourceLink: {
+			label: "lom.ff.hr/dokumenti/isplativost",
+			href: "https://lom.ff.hr/dokumenti/isplativost",
+		},
+	},
+	savings: {
+		title: "Potencijalna ušteda hrvatske maloprodaje",
+		subtitle: "Ilustrativni izračun — naknade koje posrednici danas uzmu, a na MPT railu ne postoje.",
+		txPerDay: "Transakcija dnevno",
+		avgAmount: "Prosječni iznos (€)",
+		perTx: "Naknada po transakciji",
+		daily: "Dnevno",
+		monthly: "Mjesečno",
+		yearly: "Godišnje",
+		vsCard: "vs. kartica",
+		vsSepa: "vs. SEPA nalog",
+		upTo: "do",
+		note: "Kartica: 1,5% + 0,25 € po transakciji (Stripe EEA). SEPA: fiksni nalog do 0,40 € (HR banke, plaća pošiljatelj). Mjesec = 30 dana, godina = 365.",
+	},
 	sim: {
 		title: "Simulacije korak po korak",
 		subtitle:
@@ -86,6 +163,10 @@ const hr = {
 			},
 			finished: "Scenarij dovršen — korisnik je platio 0,00 €.",
 			logEmpty: "Pritisni Kreni ili ▶ Auto za pokretanje simulacije.",
+			todayCompare: "Ista uplata danas — naknada posrednika",
+			todayCard: "Kartica (1,5% + 0,25 €)",
+			todaySepa: "SEPA nalog HR banke",
+			todayUpTo: "do",
 		},
 		testsNote:
 			"Isti state machine pokreće i automatske testove: svaki scenarij dokazuje da korisnik plaća 0 € i da se iznosi čuvaju 1:1 na svakom koraku.",
@@ -112,6 +193,7 @@ const en: typeof hr = {
 	},
 	nav: {
 		flow: "Money flow",
+		why: "Why now",
 		sim: "Simulations",
 		contact: "Contact",
 	},
@@ -167,6 +249,82 @@ const en: typeof hr = {
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
 		],
 	},
+	why: {
+		title: "Why this makes sense today",
+		subtitle:
+			"Every retail card payment and every SEPA order from a classic Croatian bank carries an intermediary fee. MPT shows that a local economy can have a sovereign payment system: money travels directly from payer to payee — without the percentage flowing to card schemes and processors, without the fixed bank order fee — and every transfer leaves a public, verifiable trace.",
+		tableHead: {
+			channel: "Channel",
+			fee: "Fee per transaction",
+			at2: "On €2",
+			at5: "On €5",
+			at100: "On €100",
+		},
+		channels: [
+			{
+				name: "MPT rail (EURe, Gnosis)",
+				fee: "€0 for the user (gas ~€0.001, sponsored)",
+				at2: "€0.00 · 0%",
+				at5: "€0.00 · 0%",
+				at100: "€0.00 · 0%",
+				tone: "win" as const,
+			},
+			{
+				name: "Card (Stripe EEA)",
+				fee: "1.5% + €0.25",
+				at2: "€0.28 · 14%",
+				at5: "€0.33 · 6.5%",
+				at100: "€1.75 · 1.75%",
+				tone: "leak" as const,
+			},
+			{
+				name: "SEPA order (Croatian banks)",
+				fee: "€0.25–0.40 fixed — paid by the sender",
+				at2: "€0.40 · up to 20%",
+				at5: "€0.40 · up to 8%",
+				at100: "€0.40 · 0.4%",
+				tone: "warn" as const,
+			},
+		],
+		points: [
+			{
+				title: "Fixed fees kill micropayments",
+				text: "On a €2 payment the card fee is 14%, and the fixed bank order up to 20%. Small, frequent payments — exactly what local retail lives on — are the most expensive today. Only a transfer with no fixed component on either side makes micropayments viable.",
+			},
+			{
+				title: "Money stays in the local economy",
+				text: "A percentage of every card transaction leaves the local circle for schemes and processors. On the MPT rail the full amount reaches the payee — a difference that, over thousands of transactions, accumulates into serious money that stays with the merchant and the community.",
+			},
+			{
+				title: "Sovereignty without intermediaries",
+				text: "The rail is built on regulated e-money (EURe, issued by the licensed EMI Monerium) in the user's self-custody. There is no intermediary between payer and payee charging a margin — the local economy gets a payment system of its own.",
+			},
+			{
+				title: "A public, verifiable trace",
+				text: "Unlike cash and card settlements, every transfer is publicly visible and auditable onchain — transparency for the buyer, the merchant and the community, without giving up self-custody.",
+			},
+		],
+		sourceNote:
+			"Rates: Stripe EEA pricing for domestic cards (July 2026) and typical fixed SEPA order fees at classic Croatian banks (ZABA, PBZ, Erste, OTP, HPB). Source and methodology:",
+		sourceLink: {
+			label: "lom.ff.hr/dokumenti/isplativost",
+			href: "https://lom.ff.hr/dokumenti/isplativost",
+		},
+	},
+	savings: {
+		title: "Potential savings for Croatian retail",
+		subtitle: "An illustrative calculation — the fees intermediaries take today that don't exist on the MPT rail.",
+		txPerDay: "Transactions per day",
+		avgAmount: "Average amount (€)",
+		perTx: "Fee per transaction",
+		daily: "Daily",
+		monthly: "Monthly",
+		yearly: "Yearly",
+		vsCard: "vs. card",
+		vsSepa: "vs. SEPA order",
+		upTo: "up to",
+		note: "Card: 1.5% + €0.25 per transaction (Stripe EEA). SEPA: fixed order up to €0.40 (Croatian banks, paid by the sender). Month = 30 days, year = 365.",
+	},
 	sim: {
 		title: "Step-by-step simulations",
 		subtitle:
@@ -190,6 +348,10 @@ const en: typeof hr = {
 			},
 			finished: "Scenario complete — the user paid €0.00.",
 			logEmpty: "Press Start or ▶ Auto to run the simulation.",
+			todayCompare: "The same payment today — intermediary fee",
+			todayCard: "Card (1.5% + €0.25)",
+			todaySepa: "Croatian bank SEPA order",
+			todayUpTo: "up to",
 		},
 		testsNote:
 			"The same state machine also powers automated tests: every scenario proves the user pays €0 and amounts are conserved 1:1 at every step.",

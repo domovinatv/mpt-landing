@@ -23,6 +23,7 @@ export default async function LandingPage({
 			<Nav dict={dict} />
 			<Hero dict={dict} />
 			<Flow dict={dict} />
+			<Why dict={dict} />
 			<Simulations dict={dict} locale={locale} />
 			<Cta dict={dict} />
 			<Footer dict={dict} />
@@ -54,6 +55,9 @@ function Nav({ dict }: { dict: Dictionary }) {
 			<nav className="flex items-center gap-6 text-sm">
 				<a href="#flow" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
 					{dict.nav.flow}
+				</a>
+				<a href="#why" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
+					{dict.nav.why}
 				</a>
 				<a href="#sim" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
 					{dict.nav.sim}
@@ -190,6 +194,76 @@ function Flow({ dict }: { dict: Dictionary }) {
 						</a>
 					</span>
 				))}
+			</p>
+		</section>
+	);
+}
+
+const toneCls: Record<"win" | "leak" | "warn", string> = {
+	win: "border-green/40 bg-green-soft/60 text-green",
+	leak: "border-red/30 bg-red-soft/70 text-red",
+	warn: "border-gold/40 bg-gold-soft/50 text-[#7a5a12]",
+};
+
+function Why({ dict }: { dict: Dictionary }) {
+	return (
+		<section id="why" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+			<SectionHeading title={dict.why.title} subtitle={dict.why.subtitle} />
+
+			{/* channel fee comparison — numbers from the isplativost analysis */}
+			<div className="mt-12 overflow-x-auto rounded-[18px] border border-line bg-white shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)]">
+				<table className="w-full min-w-[640px] text-sm">
+					<thead>
+						<tr className="border-b border-line text-left text-[11px] font-bold uppercase tracking-wider text-mute">
+							<th className="px-5 py-3">{dict.why.tableHead.channel}</th>
+							<th className="px-5 py-3">{dict.why.tableHead.fee}</th>
+							<th className="px-5 py-3">{dict.why.tableHead.at2}</th>
+							<th className="px-5 py-3">{dict.why.tableHead.at5}</th>
+							<th className="px-5 py-3">{dict.why.tableHead.at100}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{dict.why.channels.map((ch) => (
+							<tr key={ch.name} className="border-b border-line last:border-0">
+								<td className="px-5 py-4 font-semibold text-ink">{ch.name}</td>
+								<td className="px-5 py-4 text-mute">{ch.fee}</td>
+								{[ch.at2, ch.at5, ch.at100].map((v, i) => (
+									<td key={i} className="px-5 py-4">
+										<span
+											className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-xs font-semibold ${toneCls[ch.tone]}`}
+										>
+											{v}
+										</span>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+
+			<div className="mt-6 grid gap-6 sm:grid-cols-2">
+				{dict.why.points.map((point) => (
+					<div
+						key={point.title}
+						className="rounded-[18px] border border-line bg-white p-6 shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)] transition hover:border-gold"
+					>
+						<h3 className="font-semibold text-ink">{point.title}</h3>
+						<p className="mt-3 text-sm leading-relaxed text-mute">{point.text}</p>
+					</div>
+				))}
+			</div>
+
+			<p className="mt-8 text-center text-xs text-mute">
+				{dict.why.sourceNote}{" "}
+				<a
+					href={dict.why.sourceLink.href}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="font-medium text-navy underline decoration-gold/50 underline-offset-4 transition hover:text-navy-700"
+				>
+					{dict.why.sourceLink.label}
+				</a>
 			</p>
 		</section>
 	);
