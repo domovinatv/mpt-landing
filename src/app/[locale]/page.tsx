@@ -217,6 +217,7 @@ function Why({ dict }: { dict: Dictionary }) {
 						<tr className="border-b border-line text-left text-[11px] font-bold uppercase tracking-wider text-mute">
 							<th className="px-5 py-3">{dict.why.tableHead.channel}</th>
 							<th className="px-5 py-3">{dict.why.tableHead.fee}</th>
+							<th className="px-5 py-3">{dict.why.tableHead.at1}</th>
 							<th className="px-5 py-3">{dict.why.tableHead.at2}</th>
 							<th className="px-5 py-3">{dict.why.tableHead.at5}</th>
 							<th className="px-5 py-3">{dict.why.tableHead.at100}</th>
@@ -227,7 +228,7 @@ function Why({ dict }: { dict: Dictionary }) {
 							<tr key={ch.name} className="border-b border-line last:border-0">
 								<td className="px-5 py-4 font-semibold text-ink">{ch.name}</td>
 								<td className="px-5 py-4 text-mute">{ch.fee}</td>
-								{[ch.at2, ch.at5, ch.at100].map((v, i) => (
+								{[ch.at1, ch.at2, ch.at5, ch.at100].map((v, i) => (
 									<td key={i} className="px-5 py-4">
 										<span
 											className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-xs font-semibold ${toneCls[ch.tone]}`}

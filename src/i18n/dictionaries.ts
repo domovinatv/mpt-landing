@@ -71,6 +71,7 @@ const hr = {
 		tableHead: {
 			channel: "Kanal",
 			fee: "Naknada po transakciji",
+			at1: "Na 1 €",
 			at2: "Na 2 €",
 			at5: "Na 5 €",
 			at100: "Na 100 €",
@@ -79,6 +80,7 @@ const hr = {
 			{
 				name: "MPT rail (EURe, Gnosis)",
 				fee: "0 € za korisnika (gas ~0,001 €, sponzoriran)",
+				at1: "0,00 € · 0%",
 				at2: "0,00 € · 0%",
 				at5: "0,00 € · 0%",
 				at100: "0,00 € · 0%",
@@ -87,6 +89,7 @@ const hr = {
 			{
 				name: "Kartica (Stripe EEA)",
 				fee: "1,5% + 0,25 €",
+				at1: "0,27 € · 26,5%",
 				at2: "0,28 € · 14%",
 				at5: "0,33 € · 6,5%",
 				at100: "1,75 € · 1,75%",
@@ -95,6 +98,7 @@ const hr = {
 			{
 				name: "SEPA nalog (HR banke)",
 				fee: "0,25–0,45 € fiksno — plaća pošiljatelj",
+				at1: "do 0,45 € · do 45%",
 				at2: "do 0,45 € · do 22,5%",
 				at5: "do 0,45 € · do 9%",
 				at100: "do 0,45 € · 0,45%",
@@ -287,6 +291,7 @@ const en: typeof hr = {
 		tableHead: {
 			channel: "Channel",
 			fee: "Fee per transaction",
+			at1: "On €1",
 			at2: "On €2",
 			at5: "On €5",
 			at100: "On €100",
@@ -295,6 +300,7 @@ const en: typeof hr = {
 			{
 				name: "MPT rail (EURe, Gnosis)",
 				fee: "€0 for the user (gas ~€0.001, sponsored)",
+				at1: "€0.00 · 0%",
 				at2: "€0.00 · 0%",
 				at5: "€0.00 · 0%",
 				at100: "€0.00 · 0%",
@@ -303,6 +309,7 @@ const en: typeof hr = {
 			{
 				name: "Card (Stripe EEA)",
 				fee: "1.5% + €0.25",
+				at1: "€0.27 · 26.5%",
 				at2: "€0.28 · 14%",
 				at5: "€0.33 · 6.5%",
 				at100: "€1.75 · 1.75%",
@@ -311,6 +318,7 @@ const en: typeof hr = {
 			{
 				name: "SEPA order (Croatian banks)",
 				fee: "€0.25–0.45 fixed — paid by the sender",
+				at1: "up to €0.45 · up to 45%",
 				at2: "up to €0.45 · up to 22.5%",
 				at5: "up to €0.45 · up to 9%",
 				at100: "up to €0.45 · 0.45%",
