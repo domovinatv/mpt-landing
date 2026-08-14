@@ -294,11 +294,18 @@ function Cta({ dict }: { dict: Dictionary }) {
 				</h2>
 				<p className="mx-auto mt-4 max-w-xl text-lg text-[#C9D6EC]">{dict.cta.subtitle}</p>
 				<a
-					href={`mailto:${dict.cta.button}`}
+					href={dict.cta.button.href}
+					target="_blank"
+					rel="noopener noreferrer"
 					className="mt-8 inline-block rounded-full bg-gradient-to-br from-gold-light to-gold px-7 py-3 text-sm font-semibold text-[#3a2900] shadow-[0_8px_22px_-10px_rgba(200,145,42,0.7)] transition hover:-translate-y-0.5"
 				>
-					{dict.cta.button}
+					{dict.cta.button.label}
 				</a>
+				<p className="mt-4 text-sm text-[#8FA6C9]">
+					<a href={dict.cta.secondary.href} className="underline decoration-[#3f5a86] underline-offset-4 transition hover:text-white">
+						{dict.cta.secondary.label}
+					</a>
+				</p>
 			</div>
 		</section>
 	);
