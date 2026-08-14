@@ -178,8 +178,9 @@ const hr = {
 	cta: {
 		title: "Projekt je otvoren javnosti",
 		subtitle:
-			"Zanima te kako radi, želiš doprinijeti ili samo pratiti razvoj? Javi se.",
-		button: "kontakt@mpt.hr",
+			"Zanima te kako radi, želiš doprinijeti ili samo pratiti razvoj? Rasprava se vodi javno, u Telegram grupi — uključi se, a tamo nas možeš dobiti i osobno.",
+		button: { label: "Pridruži se: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+		secondary: { label: "ili e-poštom: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 	},
 	footer: {
 		columns: [
@@ -212,7 +213,8 @@ const hr = {
 		imprint:
 			"je proizvod tvrtke ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Hrvatska · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Trgovački sud u Zagrebu · direktor: Matija Stepanić",
 		imprintLinks: [
-			{ label: "kontakt@mpt.hr", href: "mailto:kontakt@mpt.hr" },
+			{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+			{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 			{ label: "italk.hr", href: "https://italk.hr" },
 		],
 		copyright: "MPT / ITalk d.o.o.",
@@ -398,8 +400,9 @@ const en: typeof hr = {
 	cta: {
 		title: "The project is open to the public",
 		subtitle:
-			"Curious how it works, want to contribute, or just follow along? Get in touch.",
-		button: "kontakt@mpt.hr",
+			"Curious how it works, want to contribute, or just follow along? The discussion happens in the open, in our Telegram group — join in, and you can reach us there directly too.",
+		button: { label: "Join us: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+		secondary: { label: "or by email: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 	},
 	footer: {
 		columns: [
@@ -432,7 +435,8 @@ const en: typeof hr = {
 		imprint:
 			"is a product of ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Croatia · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Commercial Court in Zagreb · director: Matija Stepanić",
 		imprintLinks: [
-			{ label: "kontakt@mpt.hr", href: "mailto:kontakt@mpt.hr" },
+			{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+			{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 			{ label: "italk.hr", href: "https://italk.hr" },
 		],
 		copyright: "MPT / ITalk d.o.o.",

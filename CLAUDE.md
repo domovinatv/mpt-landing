@@ -115,9 +115,18 @@ Tokeni u `globals.css` (`@theme inline` → Tailwind klase `bg-paper`, `text-nav
 dokumentu) i obrnuto je kronološki — najnoviji korak na vrhu, na fiksnoj poziciji odmah
 ispod dijagrama, pa auto-scroll nije potreban (posjetitelj gleda graf dok simulacija ide).
 
+## Kontakt
+
+Primarni kontakt je **javna Telegram grupa `t.me/mpt_hr`** (community-first narativ);
+e-mail `ms@mpt.hr` je sekundarni. Grupa se provisionira iz
+`~/git/domovinatv/novcanik-comms/provision` (`create-group.ts --public mpt_hr --no-bot
+--skip-d1` — MTProto, traži jednokratni `npm run login`). airkuna.com ima isti obrazac
+s `t.me/airkuna_com`.
+
 ## Otvoreno / TODO
 
-- `kontakt@mpt.hr` (CTA na stranici) **još ne postoji** kao mailbox — postaviti
+- Telegram grupa `t.me/mpt_hr` **još ne postoji** — pokrenuti provision (vidi Kontakt)
+- `ms@mpt.hr` (sekundarni kontakt) **još ne postoji** kao mailbox — postaviti
   Cloudflare Email Routing na zoni mpt.hr (forward na stepanic.matija@gmail.com)
 - kad GP integracija izađe iz pre-pilota, ažurirati status u machineu i dictionaries
 - kad Matija preda još implementacija, sekcija "Kako je 0% moguće" se širi iz machinea
