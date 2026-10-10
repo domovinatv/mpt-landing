@@ -1,8 +1,18 @@
 # mpt-landing — CLAUDE.md
 
 Landing za **MPT (Mint Pay Transfer)**, live na **https://mpt.hr**. Pozicioniran kao
-**proizvod tvrtke ITalk d.o.o.** (isti nastup kao airkuna.com): end-to-end transferi s
-0% naknada za korisnika, dokumentirani tok novca + interaktivni dijagram + simulacije.
+**proizvod tvrtke ITalk d.o.o.** (isti nastup kao airkuna.com).
+
+**Pozicioniranje (Matija, 2026-10-10):** MPT je **orkestrator za više Monerium računa
+(tenanata) — „RevenueCat za SEPA → EURe"**, poslovna logika ista kao RevenueCat za IAP.
+Glavna stvar je **plaćanje izravno trgovcu**: kupac plaća iz banke (SEPA s referencom
+`mpt:0x<trgovac>?sid=<intent>`), novac stiže na Monerium IBAN/Safe trgovca, forward ide
+na njegovu odobrenu adresu; MPT ne prima i ne drži novac. Kod je otvoren (MIT,
+github.com/domovinatv/pay.domovina.ai) — tko želi, pokrene vlastiti MPT. Kupac plaća 0 €.
+Iskreno o stanju: multi-tenant rail (ADR 0017) je u produkcijskom kodu ali isključen
+(`MULTI_TENANT_RAIL=0`) dok prvi vanjski tenant ne završi KYB — ITalk je jedini aktivni
+tenant. Sekcija `#status` (u produkciji / u pripremi / poznata ograničenja) mora se
+ažurirati kad se to promijeni.
 Footer nosi airkuna-stil impresum (ITalk d.o.o., OIB 54872935051, adresa, direktor —
 podaci preuzeti doslovno s airkuna.com footera, ne izmišljati) i poštenu napomenu:
 MPT **nije licencirana platna usluga** — ITalk je non-custodial software provider,
@@ -22,6 +32,9 @@ i scenariji žive tamo (s hr/en labelima kao `L10n`). Iz njega se izvode:
 Invarijante koje testovi dokazuju: korisnik plaća 0 € u svakom koraku; iznosi se čuvaju
 1:1 (zbroj salda konstantan); salda nikad negativna; guardovi (min/max) odbijaju bez
 pomicanja novca; scenariji su subsetovi punog grafa (`scenarioSubset()`).
+
+Scenarij 1 (zadani) je `sepa-checkout` (kupac → trgovac iz banke), 2 je `stray` (uplata
+bez reference, ADR 0018). Test provjerava da je merchant tok prvi.
 
 Graf je **zatvoreni krug**: jedan čvor `bank` je i početak i kraj (bilo koja banka s
 IBAN-om u eurozoni; prikazujemo hrvatske). Povratne veze: off-ramp preko vlastitog
@@ -45,7 +58,15 @@ Monerium računa natrag u banku, i Gnosis Pay VISA → Revolut (besplatni karti�
 Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
 - "mpt-main-rail" = **Safe multisig 2/3** (`0x449a…`, Moneriumov default wallet), ne Worker
 - minimumi 10 € (kartični top-up) i 1 € (SEPA) su **Revolutova produktna pravila**, ne MPT kod
-- bez adrese u referenci sredstva ostaju **parkirana na Safeu**
+- uplata bez reference **nije automatski parkirana**: od 8. 10. 2026. stray resolver
+  (ADR 0018) je poveže s intentom istog tenanta po točnom iznosu i vremenu; parkira se
+  tek kad kandidata nema ili su nejednoznačni
+- izmjerene produkcijske brojke (izvor ADR 0017/0018, `docs/research/2026-09-monerium-
+  first-iban-screening.md`): „zaprimljeno" 0 s od placedAt (~5 s od „Pošalji"), ~12 s do
+  `paid`, Monerium placed→processed medijan 9 s / p95 26 s; prva uplata s novog IBAN-a
+  ručni pregled minute–sati
+- ne objavljivati javno sigurnosne rupe iz reviewa (npr. Roles scoping, WAF) — `#status`
+  navodi samo ono što je riješeno, plan i ograničenja za korisnika
 - punjenje GP kartice = **EURe transfer s korisnikove adrese** (ne top-up iz Revoluta);
   obrnuti smjer GP VISA → Revolut jest besplatni kartični top-up
 - `donate.domovina.ai` je **statični QR ulaz** (bez backenda/intenta)
@@ -123,10 +144,17 @@ e-mail `ms@mpt.hr` je sekundarni. Grupa se provisionira iz
 --skip-d1` — MTProto, traži jednokratni `npm run login`). airkuna.com ima isti obrazac
 s `t.me/airkuna_com`.
 
+## Lokalna provjera u pregledniku
+
+`npm run preview` služi na 8787 — u pregledniku otvaraj **`http://127.0.0.1:8787`**, ne
+`localhost:8787` (na localhost originu visi service worker drugog projekta, Crošulja, i
+prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik kešira.
+
 ## Otvoreno / TODO
 
-- Telegram grupa `t.me/mpt_hr` **još ne postoji** — pokrenuti provision (vidi Kontakt)
-- `ms@mpt.hr` (sekundarni kontakt) **još ne postoji** kao mailbox — postaviti
-  Cloudflare Email Routing na zoni mpt.hr (forward na stepanic.matija@gmail.com)
-- kad GP integracija izađe iz pre-pilota, ažurirati status u machineu i dictionaries
-- kad Matija preda još implementacija, sekcija "Kako je 0% moguće" se širi iz machinea
+- Telegram grupa `t.me/mpt_hr` postoji (10. 10. 2026.: 2 člana); mpt.hr ima Google MX
+  — provjeriti da `ms@mpt.hr` stvarno prima poštu
+- kad se uključi prvi vanjski tenant (`MULTI_TENANT_RAIL=1`), Shopify prođe prvi test
+  ili GP izađe iz pre-pilota → ažurirati `status` u dictionaries + machine
+- poslovna odluka: ako trgovci budu plaćali MPT naknadu (competitor-analysis spominje
+  „ITalk routing fee TBD"), uskladiti red „MPT rail 0 €" u `#why` tablici

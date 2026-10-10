@@ -22,9 +22,11 @@ export default async function LandingPage({
 			<BackgroundGlow />
 			<Nav dict={dict} />
 			<Hero dict={dict} />
+			<How dict={dict} />
 			<Flow dict={dict} />
-			<Why dict={dict} />
 			<Simulations dict={dict} locale={locale} />
+			<Why dict={dict} />
+			<Status dict={dict} />
 			<Cta dict={dict} />
 			<Footer dict={dict} />
 		</main>
@@ -52,16 +54,16 @@ function Nav({ dict }: { dict: Dictionary }) {
 					</span>
 				</span>
 			</a>
-			<nav className="flex items-center gap-6 text-sm">
-				<a href="#flow" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
-					{dict.nav.flow}
-				</a>
-				<a href="#why" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
-					{dict.nav.why}
-				</a>
-				<a href="#sim" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
-					{dict.nav.sim}
-				</a>
+			<nav className="flex items-center gap-5 text-sm lg:gap-6">
+				{(["how", "flow", "sim", "why", "status"] as const).map((key) => (
+					<a
+						key={key}
+						href={`#${key}`}
+						className="hidden font-medium text-mute transition hover:text-navy md:inline"
+					>
+						{dict.nav[key]}
+					</a>
+				))}
 				<a href="#contact" className="hidden font-medium text-mute transition hover:text-navy sm:inline">
 					{dict.nav.contact}
 				</a>
@@ -109,7 +111,7 @@ function Hero({ dict }: { dict: Dictionary }) {
 				<p className="mt-6 max-w-xl text-lg leading-relaxed text-mute">{dict.hero.subtitle}</p>
 				<div className="mt-9 flex flex-wrap gap-4">
 					<a
-						href="#flow"
+						href="#how"
 						className="rounded-full bg-gradient-to-br from-gold-light to-gold px-6 py-3 text-sm font-semibold text-[#3a2900] shadow-[0_8px_22px_-10px_rgba(200,145,42,0.7)] transition hover:-translate-y-0.5"
 					>
 						{dict.hero.ctaPrimary}
@@ -131,6 +133,7 @@ function Hero({ dict }: { dict: Dictionary }) {
 					<p className="mt-2 font-serif text-6xl font-semibold tracking-tight text-gold-light">
 						{dict.hero.cardTotal}
 					</p>
+					<p className="mt-1 text-sm text-[#C9D6EC]">{dict.hero.cardTotalNote}</p>
 					<div className="mt-8 space-y-4">
 						{dict.hero.cardRows.map((row) => (
 							<div
@@ -159,6 +162,74 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle: string }
 	);
 }
 
+function How({ dict }: { dict: Dictionary }) {
+	const { how } = dict;
+	return (
+		<section id="how" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+			<SectionHeading title={how.title} subtitle={how.subtitle} />
+
+			{/* phones: one card per row, so the MPT column is never scrolled out of view */}
+			<div className="mt-12 space-y-3 sm:hidden">
+				{how.compareRows.map((row) => (
+					<div key={row.aspect} className="rounded-[18px] border border-line bg-white p-5 text-sm">
+						<p className="font-semibold text-ink">{row.aspect}</p>
+						<p className="mt-2 text-mute">
+							<span className="text-[11px] font-bold uppercase tracking-wider">RevenueCat</span> · {row.rc}
+						</p>
+						<p className="mt-1.5 font-medium text-navy">
+							<span className="text-[11px] font-bold uppercase tracking-wider">MPT</span> · {row.mpt}
+						</p>
+					</div>
+				))}
+			</div>
+
+			<div className="mt-12 hidden overflow-x-auto rounded-[18px] border border-line bg-white shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)] sm:block">
+				<table className="w-full min-w-[640px] text-sm">
+					<thead>
+						<tr className="border-b border-line text-left text-[11px] font-bold uppercase tracking-wider text-mute">
+							<th className="px-5 py-3">{how.compareHead.aspect}</th>
+							<th className="px-5 py-3">{how.compareHead.rc}</th>
+							<th className="px-5 py-3 text-navy">{how.compareHead.mpt}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{how.compareRows.map((row) => (
+							<tr key={row.aspect} className="border-b border-line last:border-0">
+								<td className="px-5 py-4 font-semibold text-ink">{row.aspect}</td>
+								<td className="px-5 py-4 text-mute">{row.rc}</td>
+								<td className="bg-gold-soft/30 px-5 py-4 font-medium text-navy">{row.mpt}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+
+			<div className="mt-6 grid gap-6 sm:grid-cols-2">
+				{how.cards.map((card) => (
+					<div
+						key={card.title}
+						className="rounded-[18px] border border-line bg-white p-6 shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)] transition hover:border-gold"
+					>
+						<h3 className="font-semibold text-ink">{card.title}</h3>
+						<p className="mt-3 text-sm leading-relaxed text-mute">{card.text}</p>
+					</div>
+				))}
+			</div>
+
+			<p className="mt-8 text-center text-sm text-mute">
+				<a
+					href={how.codeLink.href}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="font-medium text-navy underline decoration-gold/50 underline-offset-4 transition hover:text-navy-700"
+				>
+					{how.codeLink.label}
+				</a>
+			</p>
+		</section>
+	);
+}
+
 function Flow({ dict }: { dict: Dictionary }) {
 	return (
 		<section id="flow" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
@@ -175,9 +246,13 @@ function Flow({ dict }: { dict: Dictionary }) {
 					</div>
 				))}
 			</div>
-			<div className="mt-6 rounded-[18px] border border-line bg-soft p-6">
-				<h3 className="font-semibold text-ink">{dict.flow.altTitle}</h3>
-				<p className="mt-3 text-sm leading-relaxed text-mute">{dict.flow.altText}</p>
+			<div className="mt-6 grid gap-6 sm:grid-cols-2">
+				{dict.flow.notes.map((note) => (
+					<div key={note.title} className="rounded-[18px] border border-line bg-soft p-6">
+						<h3 className="font-semibold text-ink">{note.title}</h3>
+						<p className="mt-3 text-sm leading-relaxed text-mute">{note.text}</p>
+					</div>
+				))}
 			</div>
 			<p className="mt-8 text-center text-sm text-mute">
 				{dict.flow.liveNote}{" "}
@@ -278,6 +353,41 @@ function Simulations({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 				<SimulationPlayer locale={locale} labels={dict.sim.labels} />
 			</div>
 			<p className="mt-6 text-center text-sm text-mute">{dict.sim.testsNote}</p>
+		</section>
+	);
+}
+
+function Status({ dict }: { dict: Dictionary }) {
+	const { status } = dict;
+	const columns = [
+		{ ...status.live, dot: "bg-green", border: "border-green/30" },
+		{ ...status.prep, dot: "bg-gold", border: "border-gold/40" },
+		{ ...status.limits, dot: "bg-mute", border: "border-line" },
+	];
+	return (
+		<section id="status" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+			<SectionHeading title={status.title} subtitle={status.subtitle} />
+			<div className="mt-12 grid gap-6 lg:grid-cols-3">
+				{columns.map((col) => (
+					<div
+						key={col.title}
+						className={`rounded-[18px] border bg-white p-6 shadow-[0_10px_30px_-18px_rgba(0,30,80,0.22)] ${col.border}`}
+					>
+						<h3 className="flex items-center gap-2 font-semibold text-ink">
+							<span aria-hidden className={`h-2.5 w-2.5 rounded-full ${col.dot}`} />
+							{col.title}
+						</h3>
+						<ul className="mt-4 space-y-3 text-sm leading-relaxed text-mute">
+							{col.items.map((item) => (
+								<li key={item} className="flex gap-2.5">
+									<span aria-hidden className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${col.dot}`} />
+									<span>{item}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</div>
 		</section>
 	);
 }

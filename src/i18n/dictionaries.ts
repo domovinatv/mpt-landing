@@ -2,67 +2,151 @@ import type { Locale } from "./config";
 
 const hr = {
 	meta: {
-		title: "Mint Pay Transfer — 0% naknade, od početka do kraja",
+		title: "MPT — kupac plaća iz banke, novac stiže izravno trgovcu",
 		description:
-			"MPT (Mint Pay Transfer) je proizvod tvrtke ITalk d.o.o.: transferi novca bez ijedne naknade za korisnika — end-to-end, s dokumentiranim tokom novca i simulacijama korak po korak. Rail radi u produkciji na pay.domovina.ai.",
+			"MPT (Mint Pay Transfer), proizvod tvrtke ITalk d.o.o., orkestrira plaćanja na Monerium računima trgovaca — kao RevenueCat, ali za SEPA → EURe. Kupac plaća iz banke s 0 € naknade, novac stiže izravno trgovcu za ~12 s, a MPT ga nikad ne drži. U produkciji na pay.domovina.ai.",
 	},
 	nav: {
+		how: "Kako radi",
 		flow: "Tok novca",
-		why: "Zašto danas",
 		sim: "Simulacije",
+		why: "Zašto danas",
+		status: "Stanje",
 		contact: "Kontakt",
 	},
 	hero: {
 		eyebrow: "Mint Pay Transfer · proizvod tvrtke ITalk d.o.o.",
-		title: "Slanje novca bez ijedne naknade.",
-		titleAccent: "Od početka do kraja.",
+		title: "Kupac plaća iz banke.",
+		titleAccent: "Novac stiže izravno trgovcu.",
 		subtitle:
-			"MPT javnosti pokazuje da su transferi s 0% naknada tehnički mogući — end-to-end. Cijeli tok novca dokumentiran je tekstualno i vizualno, sa simulacijama korak po korak.",
-		ctaPrimary: "Pogledaj tok novca",
+			"MPT je orkestrator za Monerium račune trgovaca — ono što je RevenueCat za pretplate u aplikacijama, MPT je za SEPA plaćanja u EURe. Svaki trgovac ima vlastiti IBAN i Safe; MPT vodi checkout, reference, routing, webhookove i status uživo, a novac nikad ne drži. Kupac plaća 0 € naknade.",
+		ctaPrimary: "Kako MPT radi",
 		ctaSecondary: "Javi se",
-		cardLabel: "Ukupni trošak transfera",
+		cardLabel: "Izmjereno u produkciji · listopad 2026.",
+		cardTotal: "~12 s",
+		cardTotalNote: "od uplate u banci do statusa „paid“ kod trgovca",
 		cardRows: [
-			{ label: "Naknada pošiljatelja", value: "0,00 €" },
-			{ label: "Naknada primatelja", value: "0,00 €" },
-			{ label: "Marža na tečaj", value: "0,00 %" },
+			{ label: "Kupac vidi „zaprimljeno“", value: "~5 s" },
+			{ label: "Naknada kupca", value: "0,00 €" },
+			{ label: "Tko drži novac", value: "trgovac" },
 		],
-		cardTotal: "0,00 €",
+	},
+	how: {
+		title: "Orkestrator, ne posrednik",
+		subtitle:
+			"RevenueCat ne prima novac od App Storea — vodi poslovnu logiku pretplata za tisuće aplikacija. MPT na isti način ne prima novac kupaca: vodi poslovnu logiku plaćanja za više Monerium računa, a svaki od njih pripada trgovcu.",
+		compareHead: { aspect: "", rc: "RevenueCat (pretplate u aplikacijama)", mpt: "MPT (SEPA → EURe)" },
+		compareRows: [
+			{
+				aspect: "Tko naplaćuje i izdaje novac",
+				rc: "App Store / Google Play",
+				mpt: "Monerium — licencirani izdavatelj e-novca, na računu trgovca",
+			},
+			{ aspect: "Kod koga je novac", rc: "developer", mpt: "trgovac — vlastiti IBAN i Safe" },
+			{
+				aspect: "Što radi orkestrator",
+				rc: "status pretplata, entitlementi, webhookovi",
+				mpt: "checkout intenti, reference, routing, webhookovi, status uživo",
+			},
+			{ aspect: "Integracija", rc: "jedan SDK za obje trgovine", mpt: "jedan API za sve Monerium račune (tenante)" },
+		],
+		cards: [
+			{
+				title: "Vlastiti Monerium račun po trgovcu",
+				text: "Svaki tenant ima vlastiti KYB, IBAN, Safe (2/3 multisig) i listu odobrenih adresa. Novac koji je sletio na IBAN trgovca X može završiti samo na adresama trgovca X — to se provodi u kodu i onchain (Zodiac Roles).",
+			},
+			{
+				title: "Jedna integracija, ista poslovna logika",
+				text: "Checkout intent s EPC QR kodom, stanja pending → zaprimljeno → paid → expired, status uživo preko SSE-a i webhookovi (received · paid · rejected · late) s trajnim outboxom koji ponavlja isporuku do ~47 h.",
+			},
+			{
+				title: "Otporno na stvarne uplate",
+				text: "Uplata bez reference povezuje se s intentom po iznosu i vremenu, manja uplata nikad nije „paid“, a svaki forward koji ne prođe završava kao alarm — nikad tiho. Isti intent ne može se platiti dvaput.",
+			},
+			{
+				title: "Otvoreni kod — imaj svoj MPT",
+				text: "Cijeli rail je na GitHubu pod MIT licencom. Tko želi, pokrene vlastitu instancu; tko ne želi voditi infrastrukturu, koristi hostani MPT — kao što većina aplikacija koristi RevenueCat umjesto vlastitog backenda za pretplate.",
+			},
+		],
+		codeLink: { label: "github.com/domovinatv/pay.domovina.ai", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
 	flow: {
 		title: "Dokumentirani tok novca",
 		subtitle:
-			"Svaki korak, svaki račun i svaki prijelaz — tko što radi, koji su minimalni iznosi i tko plaća koju naknadu. Korisnik na svakom koraku plaća 0 €.",
+			"Svaki korak, svaki račun i svaki prijelaz — tko što radi, koliko traje i tko plaća koju naknadu. Kupac na svakom koraku plaća 0 €.",
 		steps: [
 			{
 				num: "01",
-				title: "Kartični top-up na Revolut — 0 €",
-				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya korisnik napuni Revolut (min. 10 €, Revolutov produktni limit). S hrvatskog IBAN-a ode puni iznos i puni iznos stigne na litavski IBAN — kartičnu transakciju plaća Revolut kroz svoj marketing.",
+				title: "Kupac plaća iz svoje banke — 0 €",
+				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya kupac napuni Revolut (min. 10 €, Revolutov produktni limit), pa na checkoutu skenira EPC QR i pošalje SEPA Instant (min. 1 €). Kartičnu i SEPA transakciju plaća Revolut. U referenci piše kome novac ide: mpt:0x<trgovac>?sid=<intent>.",
 			},
 			{
 				num: "02",
-				title: "SEPA Instant prema Moneriumu — 0 €",
-				text: "Iz Revoluta ide SEPA Instant (uz skeniranje EPC QR koda; Revolut pita želi li korisnik primatelja na listu dozvoljenih računa, napravi interne provjere) na Moneriumov estonski IBAN — SEPA transakciju plaća Revolut. U referenci plaćanja piše kamo novac dalje ide: mpt:0x<adresa>?sid=<id>. Monerium na uplatu automatski kreira issue order (placed → pending → processed) — webhook stiže backendu za 4–5 sekundi.",
+				title: "Uplata na IBAN trgovca, „zaprimljeno“ odmah — 0 €",
+				text: "Uplata stiže na Monerium IBAN trgovca (vlastiti KYB; prvi tenant u produkciji je ITalk d.o.o.). Monerium kreira issue order (placed → pending → processed), a MPT već na prvi webhook poveže uplatu s intentom i checkout preko SSE-a pokaže „zaprimljeno“ — u produkciji ~5 s nakon što je kupac pritisnuo „Pošalji“.",
 			},
 			{
 				num: "03",
-				title: "Mint EURe i MPT forward — 0 €",
-				text: "Monerium minta EURe 1:1 na svoj default wallet — MPT main-rail Safe (2/3 multisig) na Gnosis Chainu. Backend worker (Cloudflare Workers) na webhook pročita adresu iz reference i izvrši transfer kroz Zodiac Roles modul (rola smije isključivo EURe.transfer) — potpisuje ograničeni router EOA koji plaća gas. Bez adrese u referenci sredstva ostaju sigurno parkirana na Safeu.",
+				title: "Mint EURe i forward trgovcu — 0 €",
+				text: "Monerium minta EURe 1:1 na Safe trgovca (2/3 multisig) na Gnosis Chainu — medijan 9 s od uplate. MPT backend (Cloudflare Workers) izvrši forward kroz Zodiac Roles modul (rola smije samo EURe.transfer) na adresu iz reference — fail-closed, samo na odobrene adrese tog trgovca; gas plaća MPT-ov router. Intent postaje „paid“ na onchain potvrdi, ~12 s od uplate, a trgovac dobiva webhook.",
 			},
 			{
 				num: "04",
-				title: "EURe kod korisnika i zatvaranje kruga — 0 €",
-				text: "Korisnik slobodno raspolaže EURe: onchain transakcije (gas sponzoriran), MPT checkout intenti (pending → paid na onchain potvrdi, max 10.000 € po intentu) ili off-ramp — otvori vlastiti Monerium račun (KYC/KYB), potpiše redeem i Monerium besplatnim SEPA Instantom vrati novac na istu banku iz koje je krug krenuo (ili bilo koju drugu s IBAN-om u eurozoni). Krug završava gdje je i počeo, end-to-end 0 €.",
+				title: "Ako se referenca izgubi — novac svejedno stiže",
+				text: "Revolut iOS ponekad ispusti referencu iz QR koda. Resolver tada uplatu poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu: ako je kandidat jednoznačan, forward ide automatski; inače novac ostaje parkiran na Safeu trgovca dok ga operater ručno ne preusmjeri. Manja uplata od iznosa intenta nikad ne postaje „paid“.",
 			},
 		],
-		altTitle: "Alternativna grana: Gnosis Pay VISA (u pripremi)",
-		altText:
-			"Gnosis Pay korisniku deploya vlastiti GP Safe (Delay + Roles moduli) i izdaje besplatnu virtualnu VISA karticu — uz obavezan Sumsub KYC i opcionalni osobni Monerium IBAN. Punjenje kartice je običan EURe transfer s korisnikove adrese preko postojećeg sponzoriranog raila, a Apple Pay / Google Pay rade u Hrvatskoj. Budući da je GP VISA obična debitna kartica, njome se Revolut može besplatno napuniti natrag — krug se vrti i kroz karticu. Integracija je u pre-pilot pripremi.",
-		liveNote:
-			"MPT rail i checkout intenti rade u produkciji na pay.domovina.ai; donate.domovina.ai je statični QR ulaz na isti rail:",
+		notes: [
+			{
+				title: "Isti rail, i drugi smjerovi",
+				text: "Isti rail puni i korisnikov vlastiti wallet (on-ramp), iz kojeg se plaća checkout ili rade P2P transferi sa sponzoriranim gasom. Off-ramp ide preko vlastitog Monerium računa i besplatnog SEPA Instanta natrag u banku — krug se zatvara gdje je i počeo. Sve je u simulacijama ispod.",
+			},
+			{
+				title: "Alternativna grana: Gnosis Pay VISA (u pripremi)",
+				text: "Gnosis Pay korisniku deploya vlastiti GP Safe (Delay + Roles moduli) i izdaje besplatnu virtualnu VISA karticu — uz obavezan Sumsub KYC. Punjenje kartice je običan EURe transfer s korisnikove adrese, a Apple Pay / Google Pay rade u Hrvatskoj. GP VISA karticom Revolut se može besplatno napuniti natrag. Integracija je u pre-pilot pripremi.",
+			},
+		],
+		liveNote: "Checkout intenti i rail rade u produkciji; kod je otvoren:",
 		liveLinks: [
 			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+			{ label: "GitHub", href: "https://github.com/domovinatv/pay.domovina.ai" },
 		],
+	},
+	status: {
+		title: "Što radi danas, a što je u pripremi",
+		subtitle:
+			"Bez uljepšavanja: „u produkciji“ znači izmjereno na stvarnim uplatama. Sve ostalo je jasno označeno.",
+		live: {
+			title: "U produkciji",
+			items: [
+				"Checkout intenti s EPC QR kodom — do 10.000 € po intentu, valjanost 15 min do 24 h",
+				"„Zaprimljeno“ odmah i status uživo preko SSE-a (od 5. 10. 2026.)",
+				"Webhookovi za trgovce (received · paid · rejected · late) s trajnim outboxom",
+				"Uplate bez reference: automatsko povezivanje s intentom (od 8. 10. 2026.)",
+				"Isplata samo na odobrene adrese tenanta — fail-closed (od 1. 8. 2026.)",
+				"Nadzor Safea: alarm za svaki izlaz koji nije MPT-ov forward",
+				"Nezavisni code reviewi — svih 17 kritičnih i visokih nalaza drugog kruga riješeno 10. 10. 2026.; CI na svakom PR-u",
+			],
+		},
+		prep: {
+			title: "U pripremi",
+			items: [
+				"Drugi tenanti s vlastitim Monerium računom — kod je u produkciji, uključuje se s prvim trgovcem koji završi KYB",
+				"Shopify: MPT kao način plaćanja s QR kodom — kod spojen, prvi test na stvarnoj trgovini predstoji",
+				"WooCommerce — plan",
+				"Gnosis Pay VISA grana — pre-pilot",
+				"Potpisivanje forwarda izvan clouda (M-of-N kvorum uređaja) — prijedlog",
+			],
+		},
+		limits: {
+			title: "Poznata ograničenja",
+			items: [
+				"Prvu uplatu s novog IBAN-a Monerium zadržava na ručnom pregledu — od nekoliko minuta do nekoliko sati. Sljedeće uplate s istog IBAN-a prolaze za sekunde.",
+				"Revolut iOS ponekad ispusti referencu iz QR koda — resolver to pokriva kad je kandidat jednoznačan, inače uplatu ručno preusmjeri operater.",
+				"SEPA povrat (recall) nakon što je EURe već proslijeđen nije automatiziran.",
+			],
+		},
 	},
 	why: {
 		title: "Zašto ovo danas ima smisla",
@@ -79,7 +163,7 @@ const hr = {
 		channels: [
 			{
 				name: "MPT rail (EURe, Gnosis)",
-				fee: "0 € za korisnika (gas ~0,001 €, sponzoriran)",
+				fee: "0 € za kupca (gas ~0,001 €, sponzoriran)",
 				at1: "0,00 € · 0%",
 				at2: "0,00 € · 0%",
 				at5: "0,00 € · 0%",
@@ -146,7 +230,7 @@ const hr = {
 	sim: {
 		title: "Simulacije korak po korak",
 		subtitle:
-			"Cijeli tok modeliran je kao state machine sa svim čvorovima, prijelazima i zaštitnim limitima. Odaberi scenarij i prati novac korak po korak — dijagram pokazuje gdje je novac, dnevnik tko je što napravio i tko je platio.",
+			"Cijeli tok modeliran je kao state machine sa svim čvorovima, prijelazima i zaštitnim limitima. Odaberi scenarij — od plaćanja trgovcu iz banke do uplate bez reference — i prati novac korak po korak — dijagram pokazuje gdje je novac, dnevnik tko je što napravio i tko je platio.",
 		labels: {
 			pickScenario: "Scenarij",
 			start: "Kreni",
@@ -173,12 +257,12 @@ const hr = {
 			todayUpTo: "do",
 		},
 		testsNote:
-			"Isti state machine pokreće i automatske testove: svaki scenarij dokazuje da korisnik plaća 0 € i da se iznosi čuvaju 1:1 na svakom koraku.",
+			"Isti state machine pokreće i automatske testove: svaki scenarij dokazuje da kupac odnosno korisnik plaća 0 € i da se iznosi čuvaju 1:1 na svakom koraku.",
 	},
 	cta: {
-		title: "Projekt je otvoren javnosti",
+		title: "Želiš primati uplate preko MPT-a?",
 		subtitle:
-			"Zanima te kako radi, želiš doprinijeti ili samo pratiti razvoj? Rasprava se vodi javno, u Telegram grupi — uključi se, a tamo nas možeš dobiti i osobno.",
+			"Trgovine, udruge, župe i projekti — svatko s vlastitim Monerium računom, a MPT vodi ostalo. Ili pokreni vlastiti MPT: kod je otvoren. Razgovor se vodi javno u Telegram grupi, gdje nas možeš dobiti i osobno.",
 		button: { label: "Pridruži se: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		secondary: { label: "ili e-poštom: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 	},
@@ -187,17 +271,20 @@ const hr = {
 			{
 				title: "Proizvod",
 				links: [
+					{ label: "Kako radi", href: "#how" },
 					{ label: "Tok novca", href: "#flow" },
-					{ label: "Zašto danas", href: "#why" },
 					{ label: "Simulacije", href: "#sim" },
+					{ label: "Zašto danas", href: "#why" },
+					{ label: "Stanje", href: "#status" },
 					{ label: "Kontakt", href: "#contact" },
 				],
 			},
 			{
-				title: "Produkcija",
+				title: "Produkcija i kod",
 				links: [
 					{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 					{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+					{ label: "GitHub (MIT)", href: "https://github.com/domovinatv/pay.domovina.ai" },
 				],
 			},
 			{
@@ -208,7 +295,7 @@ const hr = {
 				],
 			},
 		],
-		note: "Napomena: MPT rail i checkout intenti rade u produkciji (pay.domovina.ai); Gnosis Pay grana iskreno je označena kao integracija u pripremi. MPT nije licencirana platna usluga — ITalk je non-custodial software provider, a regulirane funkcije (izdavanje e-novca, KYC) obavlja licencirani izdavatelj (Monerium, EMI / MiCA EMT). Ova stranica nije investicijski ni pravni savjet.",
+		note: "Napomena: MPT rail i checkout intenti rade u produkciji (pay.domovina.ai) s prvim tenantom, ITalk d.o.o.; uključivanje drugih tenanata, Shopify i Gnosis Pay grana iskreno su označeni kao u pripremi. MPT nije licencirana platna usluga — ITalk je non-custodial software provider koji ne prima ni ne drži novac kupaca, a regulirane funkcije (izdavanje e-novca, KYC/KYB) obavlja licencirani izdavatelj (Monerium, EMI / MiCA EMT). Ova stranica nije investicijski ni pravni savjet.",
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"je proizvod tvrtke ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Hrvatska · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Trgovački sud u Zagrebu · direktor: Matija Stepanić",
@@ -224,67 +311,151 @@ const hr = {
 
 const en: typeof hr = {
 	meta: {
-		title: "Mint Pay Transfer — 0% fees, end to end",
+		title: "MPT — the buyer pays from the bank, the money goes straight to the merchant",
 		description:
-			"MPT (Mint Pay Transfer) is a product by ITalk d.o.o.: money transfers with zero fees for the user — end-to-end, with a documented money flow and step-by-step simulations. The rail runs in production at pay.domovina.ai.",
+			"MPT (Mint Pay Transfer), a product by ITalk d.o.o., orchestrates payments on merchants' Monerium accounts — like RevenueCat, but for SEPA → EURe. The buyer pays from the bank with €0 in fees, the money reaches the merchant in ~12 s, and MPT never holds it. In production at pay.domovina.ai.",
 	},
 	nav: {
+		how: "How it works",
 		flow: "Money flow",
-		why: "Why now",
 		sim: "Simulations",
+		why: "Why now",
+		status: "Status",
 		contact: "Contact",
 	},
 	hero: {
 		eyebrow: "Mint Pay Transfer · a product by ITalk d.o.o.",
-		title: "Send money with zero fees.",
-		titleAccent: "End to end.",
+		title: "The buyer pays from the bank.",
+		titleAccent: "The money goes straight to the merchant.",
 		subtitle:
-			"MPT shows the public that transfers with 0% fees are technically possible — end-to-end. The entire money flow is documented textually and visually, with step-by-step simulations.",
-		ctaPrimary: "See the money flow",
+			"MPT is an orchestrator for merchants' Monerium accounts — what RevenueCat is for in-app subscriptions, MPT is for SEPA payments in EURe. Every merchant has its own IBAN and Safe; MPT runs the checkout, references, routing, webhooks and live status, and never holds the money. The buyer pays €0 in fees.",
+		ctaPrimary: "How MPT works",
 		ctaSecondary: "Get in touch",
-		cardLabel: "Total transfer cost",
+		cardLabel: "Measured in production · October 2026",
+		cardTotal: "~12 s",
+		cardTotalNote: "from the bank payment to “paid” at the merchant",
 		cardRows: [
-			{ label: "Sender fee", value: "€0.00" },
-			{ label: "Recipient fee", value: "€0.00" },
-			{ label: "FX markup", value: "0.00%" },
+			{ label: "Buyer sees “received”", value: "~5 s" },
+			{ label: "Buyer's fee", value: "€0.00" },
+			{ label: "Who holds the money", value: "the merchant" },
 		],
-		cardTotal: "€0.00",
+	},
+	how: {
+		title: "An orchestrator, not an intermediary",
+		subtitle:
+			"RevenueCat never receives money from the App Store — it runs the subscription business logic for thousands of apps. In the same way, MPT never receives buyers' money: it runs the payment business logic for many Monerium accounts, each of which belongs to a merchant.",
+		compareHead: { aspect: "", rc: "RevenueCat (in-app subscriptions)", mpt: "MPT (SEPA → EURe)" },
+		compareRows: [
+			{
+				aspect: "Who charges and issues the money",
+				rc: "App Store / Google Play",
+				mpt: "Monerium — a licensed e-money issuer, on the merchant's account",
+			},
+			{ aspect: "Who holds the money", rc: "the developer", mpt: "the merchant — its own IBAN and Safe" },
+			{
+				aspect: "What the orchestrator does",
+				rc: "subscription status, entitlements, webhooks",
+				mpt: "checkout intents, references, routing, webhooks, live status",
+			},
+			{ aspect: "Integration", rc: "one SDK for both stores", mpt: "one API for every Monerium account (tenant)" },
+		],
+		cards: [
+			{
+				title: "An own Monerium account per merchant",
+				text: "Every tenant has its own KYB, IBAN, Safe (a 2/3 multisig) and list of approved addresses. Money that lands on merchant X's IBAN can only end up at merchant X's addresses — enforced in code and onchain (Zodiac Roles).",
+			},
+			{
+				title: "One integration, the same business logic",
+				text: "A checkout intent with an EPC QR code, states pending → received → paid → expired, live status over SSE, and webhooks (received · paid · rejected · late) with a durable outbox that retries delivery for up to ~47 h.",
+			},
+			{
+				title: "Built for real-world payments",
+				text: "A payment without a reference is matched to an intent by amount and time, an underpayment never becomes “paid”, and every forward that fails ends up as an alert — never silently. The same intent cannot be paid twice.",
+			},
+			{
+				title: "Open source — run your own MPT",
+				text: "The whole rail is on GitHub under the MIT license. Anyone can run their own instance; those who'd rather not operate infrastructure use the hosted MPT — just as most apps use RevenueCat instead of building their own subscription backend.",
+			},
+		],
+		codeLink: { label: "github.com/domovinatv/pay.domovina.ai", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
 	flow: {
 		title: "The documented money flow",
 		subtitle:
-			"Every step, every account and every transition — who does what, what the minimum amounts are and who pays each fee. The user pays €0 at every step.",
+			"Every step, every account and every transition — who does what, how long it takes and who pays each fee. The buyer pays €0 at every step.",
 		steps: [
 			{
 				num: "01",
-				title: "Card top-up to Revolut — €0",
-				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the user tops up Revolut (min. €10, a Revolut product limit). The full amount leaves the Croatian IBAN and the full amount arrives on the Lithuanian IBAN — Revolut pays the card transaction as part of its marketing.",
+				title: "The buyer pays from their own bank — €0",
+				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the buyer tops up Revolut (min. €10, a Revolut product limit), then scans the EPC QR at checkout and sends a SEPA Instant (min. €1). Revolut pays both the card and the SEPA transaction. The reference says who the money is for: mpt:0x<merchant>?sid=<intent>.",
 			},
 			{
 				num: "02",
-				title: "SEPA Instant to Monerium — €0",
-				text: "From Revolut a SEPA Instant goes out (with EPC QR scanning; Revolut asks whether to add the payee to the allowed-recipients list and runs internal checks) to Monerium's Estonian IBAN — Revolut pays the SEPA transaction. The payment reference says where the money goes next: mpt:0x<address>?sid=<id>. On arrival Monerium automatically creates an issue order (placed → pending → processed) — the webhook reaches the backend in 4–5 seconds.",
+				title: "Payment to the merchant's IBAN, “received” right away — €0",
+				text: "The payment lands on the merchant's Monerium IBAN (its own KYB; the first tenant in production is ITalk d.o.o.). Monerium creates an issue order (placed → pending → processed), and on the very first webhook MPT links the payment to the intent and the checkout shows “received” over SSE — in production ~5 s after the buyer pressed “Send”.",
 			},
 			{
 				num: "03",
-				title: "EURe mint and the MPT forward — €0",
-				text: "Monerium mints EURe 1:1 to its default wallet — the MPT main-rail Safe (a 2/3 multisig) on Gnosis Chain. On the webhook, the backend worker (Cloudflare Workers) reads the address from the reference and executes the transfer through the Zodiac Roles module (the role may only call EURe.transfer) — a constrained router EOA signs and pays the gas. With no address in the reference, the funds stay safely parked in the Safe.",
+				title: "EURe mint and forward to the merchant — €0",
+				text: "Monerium mints EURe 1:1 to the merchant's Safe (a 2/3 multisig) on Gnosis Chain — a median 9 s after the payment. The MPT backend (Cloudflare Workers) forwards through the Zodiac Roles module (the role may only call EURe.transfer) to the address in the reference — fail-closed, to that merchant's approved addresses only; MPT's router pays the gas. The intent flips to “paid” on onchain confirmation, ~12 s after the payment, and the merchant gets a webhook.",
 			},
 			{
 				num: "04",
-				title: "EURe with the user and closing the circle — €0",
-				text: "The user freely controls the EURe: onchain transactions (gas sponsored), MPT checkout intents (pending → paid on onchain confirmation, max €10,000 per intent), or the off-ramp — open an own Monerium account (KYC/KYB), sign a redeem and Monerium returns the money by free SEPA Instant to the very bank the circle started from (or any other bank with a eurozone IBAN). The circle ends where it began, end-to-end €0.",
+				title: "If the reference gets lost — the money still arrives",
+				text: "Revolut iOS sometimes drops the reference from the QR code. The resolver then links the payment to an open intent of the same merchant by exact amount and time: if the candidate is unambiguous, the forward runs automatically; otherwise the money stays parked in the merchant's Safe until an operator reroutes it by hand. A payment smaller than the intent never becomes “paid”.",
 			},
 		],
-		altTitle: "Alternative branch: Gnosis Pay VISA (in preparation)",
-		altText:
-			"Gnosis Pay deploys the user's own GP Safe (Delay + Roles modules) and issues a free virtual VISA card — with mandatory Sumsub KYC and an optional personal Monerium IBAN. Funding the card is a plain EURe transfer from the user's address over the existing sponsored rail, and Apple Pay / Google Pay work in Croatia. Since the GP VISA is a regular debit card, it can also top Revolut back up for free — the circle spins through the card too. The integration is in pre-pilot preparation.",
-		liveNote:
-			"The MPT rail and checkout intents run in production at pay.domovina.ai; donate.domovina.ai is a static QR entry to the same rail:",
+		notes: [
+			{
+				title: "The same rail, other directions too",
+				text: "The same rail also funds a user's own wallet (on-ramp), from which they pay a checkout or make P2P transfers with sponsored gas. The off-ramp goes through an own Monerium account and a free SEPA Instant back to the bank — the circle closes where it started. It's all in the simulations below.",
+			},
+			{
+				title: "Alternative branch: Gnosis Pay VISA (in preparation)",
+				text: "Gnosis Pay deploys the user's own GP Safe (Delay + Roles modules) and issues a free virtual VISA card — with mandatory Sumsub KYC. Funding the card is a plain EURe transfer from the user's address, and Apple Pay / Google Pay work in Croatia. The GP VISA can top Revolut back up for free. The integration is in pre-pilot preparation.",
+			},
+		],
+		liveNote: "Checkout intents and the rail run in production; the code is open:",
 		liveLinks: [
 			{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 			{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+			{ label: "GitHub", href: "https://github.com/domovinatv/pay.domovina.ai" },
 		],
+	},
+	status: {
+		title: "What works today, and what's in preparation",
+		subtitle:
+			"No embellishment: “in production” means measured on real payments. Everything else is clearly labelled.",
+		live: {
+			title: "In production",
+			items: [
+				"Checkout intents with an EPC QR code — up to €10,000 per intent, valid 15 min to 24 h",
+				"“Received” right away and live status over SSE (since 5 Oct 2026)",
+				"Merchant webhooks (received · paid · rejected · late) with a durable outbox",
+				"Payments without a reference: automatic matching to an intent (since 8 Oct 2026)",
+				"Payouts only to the tenant's approved addresses — fail-closed (since 1 Aug 2026)",
+				"Safe monitoring: an alert for every outflow that isn't an MPT forward",
+				"Independent code reviews — all 17 critical and high findings of the second round fixed on 10 Oct 2026; CI on every PR",
+			],
+		},
+		prep: {
+			title: "In preparation",
+			items: [
+				"Further tenants with their own Monerium account — the code is in production and switches on with the first merchant to complete KYB",
+				"Shopify: MPT as a payment method with a QR code — code merged, the first test on a real store is upcoming",
+				"WooCommerce — planned",
+				"Gnosis Pay VISA branch — pre-pilot",
+				"Signing forwards outside the cloud (an M-of-N device quorum) — proposal",
+			],
+		},
+		limits: {
+			title: "Known limitations",
+			items: [
+				"Monerium holds the first payment from a new IBAN for manual review — from a few minutes to several hours. Later payments from the same IBAN clear in seconds.",
+				"Revolut iOS sometimes drops the reference from the QR code — the resolver covers this when the candidate is unambiguous; otherwise an operator reroutes the payment by hand.",
+				"A SEPA recall after the EURe has already been forwarded is not automated.",
+			],
+		},
 	},
 	why: {
 		title: "Why this makes sense today",
@@ -301,7 +472,7 @@ const en: typeof hr = {
 		channels: [
 			{
 				name: "MPT rail (EURe, Gnosis)",
-				fee: "€0 for the user (gas ~€0.001, sponsored)",
+				fee: "€0 for the buyer (gas ~€0.001, sponsored)",
 				at1: "€0.00 · 0%",
 				at2: "€0.00 · 0%",
 				at5: "€0.00 · 0%",
@@ -368,7 +539,7 @@ const en: typeof hr = {
 	sim: {
 		title: "Step-by-step simulations",
 		subtitle:
-			"The entire flow is modeled as a state machine with every node, transition and guard limit. Pick a scenario and follow the money step by step — the diagram shows where the money is, the log shows who did what and who paid.",
+			"The entire flow is modeled as a state machine with every node, transition and guard limit. Pick a scenario — from a buyer paying a merchant from the bank to a payment without a reference — and follow the money step by step — the diagram shows where the money is, the log shows who did what and who paid.",
 		labels: {
 			pickScenario: "Scenario",
 			start: "Start",
@@ -398,9 +569,9 @@ const en: typeof hr = {
 			"The same state machine also powers automated tests: every scenario proves the user pays €0 and amounts are conserved 1:1 at every step.",
 	},
 	cta: {
-		title: "The project is open to the public",
+		title: "Want to accept payments through MPT?",
 		subtitle:
-			"Curious how it works, want to contribute, or just follow along? The discussion happens in the open, in our Telegram group — join in, and you can reach us there directly too.",
+			"Shops, associations, parishes and projects — each with its own Monerium account, while MPT runs the rest. Or run your own MPT: the code is open. The conversation happens in the open in our Telegram group, where you can reach us directly too.",
 		button: { label: "Join us: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		secondary: { label: "or by email: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
 	},
@@ -409,17 +580,20 @@ const en: typeof hr = {
 			{
 				title: "Product",
 				links: [
+					{ label: "How it works", href: "#how" },
 					{ label: "Money flow", href: "#flow" },
-					{ label: "Why now", href: "#why" },
 					{ label: "Simulations", href: "#sim" },
+					{ label: "Why now", href: "#why" },
+					{ label: "Status", href: "#status" },
 					{ label: "Contact", href: "#contact" },
 				],
 			},
 			{
-				title: "Production",
+				title: "Production & code",
 				links: [
 					{ label: "pay.domovina.ai", href: "https://pay.domovina.ai" },
 					{ label: "donate.domovina.ai", href: "https://donate.domovina.ai" },
+					{ label: "GitHub (MIT)", href: "https://github.com/domovinatv/pay.domovina.ai" },
 				],
 			},
 			{
@@ -430,7 +604,7 @@ const en: typeof hr = {
 				],
 			},
 		],
-		note: "Note: the MPT rail and checkout intents run in production (pay.domovina.ai); the Gnosis Pay branch is honestly labeled as an integration in preparation. MPT is not a licensed payment service — ITalk is a non-custodial software provider, and regulated functions (e-money issuance, KYC) are performed by a licensed issuer (Monerium, EMI / MiCA EMT). This page is not investment or legal advice.",
+		note: "Note: the MPT rail and checkout intents run in production (pay.domovina.ai) with the first tenant, ITalk d.o.o.; onboarding further tenants, Shopify and the Gnosis Pay branch are honestly labelled as in preparation. MPT is not a licensed payment service — ITalk is a non-custodial software provider that neither receives nor holds buyers' money, and regulated functions (e-money issuance, KYC/KYB) are performed by a licensed issuer (Monerium, EMI / MiCA EMT). This page is not investment or legal advice.",
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"is a product of ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Croatia · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Commercial Court in Zagreb · director: Matija Stepanić",
