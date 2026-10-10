@@ -6,6 +6,8 @@ ovdje je ono što se iz koda ne vidi.
 
 Vezani dokumenti: `docs/revenuedog.md` (MPT globalno = RevenueDog), `docs/legal-pages-brief.md`
 (sljedeći korak), `CLAUDE.md` (struktura sitea, cijene, CTA).
+Nastavak istog dana: `docs/2026-10-10-landing-gap-analysis.md` (što landing nije pokrivao →
+stranica `/merchants`, scenariji `parked`/`underpaid`).
 
 ## Nalazi na starom mpt.hr (stanje `d12b095`)
 

@@ -108,6 +108,7 @@ Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
   pisati „intent se ne može platiti dvaput“
 - gas za routere hostanih tenanata puni MPT (Matija, 10. 10. 2026.) — „gas plaća MPT“ vrijedi
 - Moneriumova suglasnost za javni opis integracije (API ToS §4) nije potrebna (Matija)
+- **oba repoa (mpt-landing i pay.domovina.ai) su javna** — i `docs/` ovdje je javno
 - ne objavljivati javno sigurnosne rupe iz reviewa (npr. Roles scoping, WAF) — `#status`
   navodi samo ono što je riješeno, plan i ograničenja za korisnika
 - punjenje GP kartice = **EURe transfer s korisnikove adrese** (ne top-up iz Revoluta);
@@ -204,6 +205,12 @@ prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik keš
   docs" kao RevenueCat; dotad integracija = consulting
 - stranice uvjeta korištenja i privatnosti (prije prvog vanjskog tenanta) — plan i
   poznate činjenice u `docs/legal-pages-brief.md`, radi se u zasebnoj sesiji
+- iz analize `docs/2026-10-10-landing-gap-analysis.md` otvoreno: branded `not-found`
+  stranica (danas generička Nextova na engleskom), mjerenje konverzije CTA-a (bez kolačića),
+  backend rupe iz sekcije D (dvostruka/dopunska uplata bez settled eventa, labav istek
+  P0-7, refund) — rješavaju se u pay.domovina.ai, pa `/merchants` ažurirati
+- `/merchants` opisuje ponašanje backenda na dan 10. 10. 2026. — pri svakoj promjeni
+  intent/webhook logike u pay.domovina.ai provjeriti tablicu „što se dogodi kad…“
 - ESLint konfiguracija je pokvarena (`npx eslint src` puca na circular config) — niski
   prioritet
 - kad se uključi prvi vanjski tenant (`MULTI_TENANT_RAIL=1`), Shopify prođe prvi test
