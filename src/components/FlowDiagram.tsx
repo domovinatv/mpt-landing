@@ -162,6 +162,7 @@ const H_KIND: Record<EdgeId, "rail" | "drop" | "up"> = {
 	"e-sepa": "rail",
 	"e-mint": "rail",
 	"e-relay": "rail",
+	"e-forward": "drop",
 	"e-p2p": "drop",
 	"e-checkout": "drop",
 	"e-gp-fund": "drop",
@@ -264,7 +265,9 @@ export default function FlowDiagram({
 					} else if (kind === "drop") {
 						sourceHandle = "b";
 						targetHandle = "t";
-						labelT = 0.78; // pull fan-out labels toward their targets so they don't collide
+						// pull fan-out labels toward their targets so they don't collide; the
+						// straight Safe → merchant forward keeps its label mid-way, above that row
+						labelT = e.id === "e-forward" ? 0.42 : 0.78;
 					} else {
 						sourceHandle = "ls";
 						targetHandle = "bt";

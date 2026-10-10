@@ -116,6 +116,34 @@ describe("terminal states", () => {
 		expect(last.balances.userAddress).toBe(onramp.initialAmount);
 	});
 
+	it.each(["sepa-checkout", "stray"])(
+		"%s pays the merchant directly from the tenant's Safe — the buyer never holds EURe",
+		(id) => {
+			const scenario = scenarios.find((s) => s.id === id)!;
+			const steps = simulate(scenario);
+			const last = steps.at(-1)!;
+			expect(last.location).toBe("merchant");
+			expect(last.balances.merchant).toBe(scenario.initialAmount);
+			expect(last.transition.id).toBe("forwardToPayee");
+			const subset = scenarioSubset(scenario);
+			expect(subset.nodes.has("userAddress")).toBe(false);
+			expect(subset.edges.has("e-forward")).toBe(true);
+			expect(subset.edges.has("e-checkout")).toBe(false);
+		},
+	);
+
+	it("a payment without a reference is resolved before it is forwarded", () => {
+		const stray = simulate(scenarios.find((s) => s.id === "stray")!);
+		const ids = stray.map((s) => s.transition.id);
+		expect(ids).toContain("sepaNoReference");
+		expect(ids).not.toContain("sepaToMonerium");
+		expect(ids.indexOf("strayResolve")).toBeLessThan(ids.indexOf("forwardToPayee"));
+	});
+
+	it("the merchant flow is the default (first) scenario", () => {
+		expect(scenarios[0].id).toBe("sepa-checkout");
+	});
+
 	it("gnosis-pay branch funds the GP Safe, spends at the POS and tops Revolut back up", () => {
 		const gp = scenarios.find((s) => s.id === "gnosis-pay")!;
 		const steps = simulate(gp);
