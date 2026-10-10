@@ -18,6 +18,10 @@ podaci preuzeti doslovno s airkuna.com footera, ne izmišljati) i poštenu napom
 MPT **nije licencirana platna usluga** — ITalk je non-custodial software provider,
 regulirane funkcije obavlja Monerium (EMI / MiCA EMT); GP grana označena "u pripremi".
 
+**RevenueDog (razmišljanje, ne odluka):** globalno gledano MPT je backend iz lipanjskog
+RevenueDog plana („RevenueCat za web3"). **Ne preimenovati ništa** — sve detalje, opcije
+brenda, rizike i otvorena pitanja drži `docs/revenuedog.md`.
+
 ## Arhitektura — jedan izvor istine
 
 **`src/lib/mpt-machine.ts` je centralni artefakt.** Svi čvorovi, veze, prijelazi, guardovi
