@@ -92,7 +92,7 @@ function BackgroundGlow() {
 }
 
 function Nav({ dict, locale, page }: { dict: Dictionary; locale: Locale; page: PageKey }) {
-	const links: { key: keyof Dictionary["nav"]; href: string; page?: PageKey }[] = [
+	const links: { key: Exclude<keyof Dictionary["nav"], "cta" | "menu">; href: string; page?: PageKey }[] = [
 		{ key: "how", href: "/#how" },
 		{ key: "flow", href: "/flow", page: "flow" },
 		{ key: "pricing", href: "/pricing", page: "pricing" },
@@ -100,7 +100,7 @@ function Nav({ dict, locale, page }: { dict: Dictionary; locale: Locale; page: P
 		{ key: "status", href: "/#status" },
 	];
 	return (
-		<header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6">
+		<header className="relative z-30 mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6">
 			<Link href={`/${locale}`} className="flex shrink-0 items-center gap-2.5">
 				<Logo />
 				<span className="font-serif text-lg font-semibold tracking-tight text-navy">
@@ -136,6 +136,40 @@ function Nav({ dict, locale, page }: { dict: Dictionary; locale: Locale; page: P
 				>
 					{dict.langSwitch.label}
 				</Link>
+				{/* below lg the inline links are hidden — a no-JS <details> menu carries them */}
+				<details className="group relative lg:hidden">
+					<summary
+						aria-label={dict.nav.menu}
+						className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full border border-line bg-white text-navy transition hover:border-gold [&::-webkit-details-marker]:hidden"
+					>
+						<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden className="group-open:hidden">
+							<path d="M1 3h12M1 7h12M1 11h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+						</svg>
+						<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden className="hidden group-open:block">
+							<path d="M2 2l10 10M12 2 2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+						</svg>
+					</summary>
+					<div className="absolute right-0 top-11 z-20 w-60 rounded-[18px] border border-line bg-white p-2 shadow-[0_24px_60px_-28px_rgba(0,30,80,0.45)]">
+						{links.map((link) => (
+							<Link
+								key={link.key}
+								href={localHref(locale, link.href)}
+								aria-current={link.page === page ? "page" : undefined}
+								className={`block rounded-xl px-4 py-2.5 font-medium transition hover:bg-soft ${
+									link.page === page ? "text-navy" : "text-mute"
+								}`}
+							>
+								{dict.nav[link.key]}
+							</Link>
+						))}
+						<a
+							href={requestHref(dict)}
+							className="mt-1 block rounded-xl bg-navy px-4 py-2.5 text-center font-semibold text-white transition hover:bg-navy-700"
+						>
+							{dict.nav.cta}
+						</a>
+					</div>
+				</details>
 			</nav>
 		</header>
 	);

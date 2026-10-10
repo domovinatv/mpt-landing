@@ -30,6 +30,7 @@ ali na `/flow` i `/why`, ne na naslovnici.
 | `/{hr,en}/pricing` | 3 plana · kalkulator (`SavingsCalculator`) · FAQ |
 | `/{hr,en}/why` | tablica naknada po kanalu · argumenti · izvor |
 
+Ispod 1024px inline linkovi se skrivaju; nosi ih `<details>` izbornik bez JS-a u navu.
 Zajednički dijelovi (nav, footer, CTA traka, `pageMetadata`, `localHref`) su u
 `src/components/site.tsx`; interni hrefovi u dictionaries su bez locale prefiksa
 (`/pricing`, `/#how`). Nova stranica = `pagePaths` + `dict.pages.<key>` + middleware
@@ -187,14 +188,14 @@ prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik keš
 
 ## Otvoreno / TODO
 
-- **`ms@mpt.hr` je sada primarni CTA** — mpt.hr ima Google MX i SPF; poslati probni mail
-  i potvrditi da stvarno stiže. Kasnije: forma ili booking (Cal.com) umjesto mailto
+- kasnije: forma ili booking (Cal.com) umjesto mailto za „Zatraži integraciju"
 - javna API dokumentacija (quickstart, intent API, webhook eventi) → onda CTA „Pogledaj
   docs" kao RevenueCat; dotad integracija = consulting
-- stranice uvjeta korištenja i privatnosti (prije prvog vanjskog tenanta) — ne pisati
-  pravni tekst bez pravnika
-- ESLint konfiguracija je pokvarena (`npx eslint src` puca na circular config) — popraviti
+- stranice uvjeta korištenja i privatnosti (prije prvog vanjskog tenanta) — plan i
+  poznate činjenice u `docs/legal-pages-brief.md`, radi se u zasebnoj sesiji
+- ESLint konfiguracija je pokvarena (`npx eslint src` puca na circular config) — niski
+  prioritet
 - kad se uključi prvi vanjski tenant (`MULTI_TENANT_RAIL=1`), Shopify prođe prvi test
   ili GP izađe iz pre-pilota → ažurirati `status` u dictionaries + machine
-- naplata MPT naknade (1% iznad 2.500 €/mj.) nije implementirana u backendu — treba prije
-  prvog vanjskog tenanta koji prijeđe prag
+- naplata MPT naknade (1% iznad 2.500 €/mj.) nije implementirana u backendu — tehnički
+  je danas 0 %, svjesno; rješava se kasnije. Landing svejedno piše 1 % (Matija)

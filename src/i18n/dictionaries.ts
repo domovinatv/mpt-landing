@@ -37,6 +37,7 @@ const hr = {
 		why: "Zašto danas",
 		status: "Stanje",
 		cta: "Zatraži integraciju",
+		menu: "Izbornik",
 	},
 	request: {
 		label: "Zatraži integraciju",
@@ -520,6 +521,7 @@ const en: typeof hr = {
 		why: "Why now",
 		status: "Status",
 		cta: "Request integration",
+		menu: "Menu",
 	},
 	request: {
 		label: "Request integration",
