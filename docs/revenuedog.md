@@ -200,3 +200,8 @@ ovdje bilježi što je odlučeno.
   `docs/monerium-private.md`
 - [`docs/flow.md`](flow.md) i [`src/lib/mpt-machine.ts`](../src/lib/mpt-machine.ts) — model
   toka novca na landingu
+
+## Vezani dokumenti
+
+- `docs/2026-10-10-revenuecat-benchmark.md` — RevenueCat kao uzor za mpt.hr: nalazi, preuzeto vs. odbačeno, CTA odluka
+- `docs/legal-pages-brief.md` — plan stranica uvjeta i privatnosti

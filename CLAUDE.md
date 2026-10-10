@@ -48,7 +48,8 @@ regulirane funkcije obavlja Monerium (EMI / MiCA EMT); GP grana označena "u pri
 
 **RevenueDog (razmišljanje, ne odluka):** globalno gledano MPT je backend iz lipanjskog
 RevenueDog plana („RevenueCat za web3"). **Ne preimenovati ništa** — sve detalje, opcije
-brenda, rizike i otvorena pitanja drži `docs/revenuedog.md`.
+brenda, rizike i otvorena pitanja drži `docs/revenuedog.md`. Usporedbu s RevenueCat
+siteom i zašto je mpt.hr ovako složen drži `docs/2026-10-10-revenuecat-benchmark.md`.
 
 ## Arhitektura — jedan izvor istine
 
