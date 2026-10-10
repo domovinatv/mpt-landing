@@ -203,5 +203,9 @@ ovdje bilježi što je odlučeno.
 
 ## Vezani dokumenti
 
+- **github.com/revenuedog/mpt** (`~/git/revenuedog/mpt`) — nastavak od 11. 10. 2026.: knowledge
+  base za globalni opis (opcije brenda proširene na RevenueDOGE s backronimom, pseći rječnik,
+  copy, provjera imena i domena, dnevnik odluka). Novije stanje vrijedi ondje.
+
 - `docs/2026-10-10-revenuecat-benchmark.md` — RevenueCat kao uzor za mpt.hr: nalazi, preuzeto vs. odbačeno, CTA odluka
 - `docs/legal-pages-brief.md` — plan stranica uvjeta i privatnosti

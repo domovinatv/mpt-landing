@@ -51,6 +51,10 @@ regulirane funkcije obavlja Monerium (EMI / MiCA EMT); GP grana označena "u pri
 RevenueDog plana („RevenueCat za web3"). **Ne preimenovati ništa** — sve detalje, opcije
 brenda, rizike i otvorena pitanja drži `docs/revenuedog.md`. Usporedbu s RevenueCat
 siteom i zašto je mpt.hr ovako složen drži `docs/2026-10-10-revenuecat-benchmark.md`.
+Od 11. 10. 2026. razrada za globalni opis (teza, pseći rječnik, copy, rizici imena, roadmap,
+dnevnik odluka) živi u zasebnom javnom repou **github.com/revenuedog/mpt**
+(`~/git/revenuedog/mpt`). Ime „RevenueDog" već koriste tri tuđa projekta; ništa se ne kupuje
+(domene, žig) dok ne postoji kombinacija koju netko kupuje (Matija).
 
 ## Arhitektura — jedan izvor istine
 
