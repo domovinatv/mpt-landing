@@ -10,7 +10,7 @@
  *
  * These are comparison inputs only — the MPT rail itself charges the user €0.
  * The fixed component is what kills micropayments: on a €2 payment the card fee
- * is 14% and the bank order up to 20%.
+ * is 14% and the bank order up to 22.5%.
  */
 
 export const CARD_FEE_PCT = 0.015;

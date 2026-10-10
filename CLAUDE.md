@@ -8,7 +8,34 @@ Landing za **MPT (Mint Pay Transfer)**, live na **https://mpt.hr**. Pozicioniran
 Glavna stvar je **plaćanje izravno trgovcu**: kupac plaća iz banke (SEPA s referencom
 `mpt:0x<trgovac>?sid=<intent>`), novac stiže na Monerium IBAN/Safe trgovca, forward ide
 na njegovu odobrenu adresu; MPT ne prima i ne drži novac. Kod je otvoren (MIT,
-github.com/domovinatv/pay.domovina.ai) — tko želi, pokrene vlastiti MPT. Kupac plaća 0 €.
+github.com/domovinatv/pay.domovina.ai) — tko želi, pokrene vlastiti MPT. Kupac MPT-u
+plaća 0 € (0 € ukupno samo na Revolut putu — iz klasične HR banke plaća nalog svojoj banci,
+landing to mora reći, ne tvrditi „0 € iz bilo koje banke").
+
+**Cijene (Matija, 2026-10-10): kao RevenueCat** — hostani MPT besplatan do 2.500 €
+mjesečnog prometa (uplate sa statusom paid u kalendarskom mjesecu), zatim 1%; Enterprise
+po dogovoru; vlastiti MPT (self-host, MIT) 0 €. SSOT brojeva: `src/lib/mpt-pricing.ts`
+(test `mpt-pricing.test.ts` drži copy u dictionaries usklađenim). Naplata u backendu još
+ne postoji; cjenik vrijedi za vanjske tenante.
+
+**Struktura sitea (2026-10-10, po uzoru na RevenueCat):** B2B naslovnica za trgovca/
+developera + podstranice. Javne API dokumentacije nema — integracija ide kroz consulting
+(„javi se"). Potrošačka/ideološka priča (wallet, P2P, GP, suverenost) **ostaje na mpt.hr**,
+ali na `/flow` i `/why`, ne na naslovnici.
+
+| Ruta | Sadržaj |
+|---|---|
+| `/{hr,en}` | hero · Kako radi (RC tablica) · Integracija u 3 koraka + kod · Za koga · cijene teaser · Što MPT jest/nije · `#status` · CTA |
+| `/{hr,en}/flow` | tok novca (4 koraka + napomene) + dijagram i simulacije |
+| `/{hr,en}/pricing` | 3 plana · kalkulator (`SavingsCalculator`) · FAQ |
+| `/{hr,en}/why` | tablica naknada po kanalu · argumenti · izvor |
+
+Zajednički dijelovi (nav, footer, CTA traka, `pageMetadata`, `localHref`) su u
+`src/components/site.tsx`; interni hrefovi u dictionaries su bez locale prefiksa
+(`/pricing`, `/#how`). Nova stranica = `pagePaths` + `dict.pages.<key>` + middleware
+matcher (preusmjerenje rute bez jezika). `sitemap.ts` i hreflang (s `x-default`) se
+izvode iz `pagePaths`. OG slika je statični `public/og.png` (izvor: SVG renderiran
+`rsvg-convert`, 1200×630).
 Iskreno o stanju: multi-tenant rail (ADR 0017) je u produkcijskom kodu ali isključen
 (`MULTI_TENANT_RAIL=0`) dok prvi vanjski tenant ne završi KYB — ITalk je jedini aktivni
 tenant. Sekcija `#status` (u produkciji / u pripremi / poznata ograničenja) mora se
@@ -77,13 +104,14 @@ Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
 
 ## Usporedba naknada ("Zašto danas" + kalkulator uštede)
 
-Sekcija `#why` na landingu, usporedba "ista uplata danas" u sidebaru simulacija i
-`SavingsCalculator` (input broja transakcija → ušteda maloprodaje dnevno/mjesečno/
-godišnje) koriste tržišne konstante iz `src/lib/market-fees.ts`. **SSOT za te stope**
+Stranica `/why`, usporedba "ista uplata danas" u sidebaru simulacija i
+`SavingsCalculator` na `/pricing` (transakcije dnevno × prosječni iznos → kartica / SEPA
+nalog / MPT po cjeniku, dnevno/mjesečno/godišnje) koriste tržišne konstante iz `src/lib/market-fees.ts`. **SSOT za te stope**
 je analiza isplativosti: lom.ff.hr/dokumenti/isplativost (vendorirana u
 `~/git/ss/ss-novcanik-prototip/docs/compliance/isplativost-wallet.md`): kartica =
-Stripe EEA 1,5% + 0,25 € (srpanj 2026.), SEPA = fiksni nalog HR banaka 0,25–0,40 €
-(plaća pošiljatelj). Ne izmišljati druge stope; kalkulator je uvijek označen kao
+Stripe EEA 1,5% + 0,25 € (srpanj 2026.), SEPA = fiksni nalog HR banaka 0,25–0,45 €
+(plaća pošiljatelj, tj. kupac). Kartičnu naknadu plaća trgovac — tablica u `/why` zato ima
+stupac „tko plaća koliko". Ne izmišljati druge stope; kalkulator je uvijek označen kao
 ilustrativan.
 
 ## Stack i deploy
@@ -142,8 +170,11 @@ ispod dijagrama, pa auto-scroll nije potreban (posjetitelj gleda graf dok simula
 
 ## Kontakt
 
-Primarni kontakt je **javna Telegram grupa `t.me/mpt_hr`** (community-first narativ);
-e-mail `ms@mpt.hr` je sekundarni. Grupa se provisionira iz
+**Primarni CTA (od 2026-10-10) je „Zatraži integraciju"** — `mailto:ms@mpt.hr` s
+predloškom (organizacija, platforma, mjesečni promet, Monerium račun), isti u navu, heru,
+planovima i CTA traci (`requestHref()` u dictionaries). B2B best practice je jedan
+dosljedan sales CTA; bez booking alata/forme mailto s predloškom je najmanje trenja.
+Telegram grupa `t.me/mpt_hr` je sekundarna (pitanja i zajednica). Grupa se provisionira iz
 `~/git/domovinatv/novcanik-comms/provision` (`create-group.ts --public mpt_hr --no-bot
 --skip-d1` — MTProto, traži jednokratni `npm run login`). airkuna.com ima isti obrazac
 s `t.me/airkuna_com`.
@@ -156,9 +187,14 @@ prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik keš
 
 ## Otvoreno / TODO
 
-- Telegram grupa `t.me/mpt_hr` postoji (10. 10. 2026.: 2 člana); mpt.hr ima Google MX
-  — provjeriti da `ms@mpt.hr` stvarno prima poštu
+- **`ms@mpt.hr` je sada primarni CTA** — mpt.hr ima Google MX i SPF; poslati probni mail
+  i potvrditi da stvarno stiže. Kasnije: forma ili booking (Cal.com) umjesto mailto
+- javna API dokumentacija (quickstart, intent API, webhook eventi) → onda CTA „Pogledaj
+  docs" kao RevenueCat; dotad integracija = consulting
+- stranice uvjeta korištenja i privatnosti (prije prvog vanjskog tenanta) — ne pisati
+  pravni tekst bez pravnika
+- ESLint konfiguracija je pokvarena (`npx eslint src` puca na circular config) — popraviti
 - kad se uključi prvi vanjski tenant (`MULTI_TENANT_RAIL=1`), Shopify prođe prvi test
   ili GP izađe iz pre-pilota → ažurirati `status` u dictionaries + machine
-- poslovna odluka: ako trgovci budu plaćali MPT naknadu (competitor-analysis spominje
-  „ITalk routing fee TBD"), uskladiti red „MPT rail 0 €" u `#why` tablici
+- naplata MPT naknade (1% iznad 2.500 €/mj.) nije implementirana u backendu — treba prije
+  prvog vanjskog tenanta koji prijeđe prag

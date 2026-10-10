@@ -1,35 +1,66 @@
 import type { Locale } from "./config";
 
+/**
+ * All page copy, hr + en. Internal hrefs are locale-less ("/pricing", "/#how")
+ * and get the locale prefix in the components.
+ *
+ * MPT pricing numbers (2.500 € / 1%) mirror src/lib/mpt-pricing.ts;
+ * market fee numbers mirror src/lib/market-fees.ts.
+ */
 const hr = {
-	meta: {
-		title: "MPT — kupac plaća iz banke, novac stiže izravno trgovcu",
-		description:
-			"MPT (Mint Pay Transfer), proizvod tvrtke ITalk d.o.o., orkestrira plaćanja na Monerium računima trgovaca — kao RevenueCat, ali za SEPA → EURe. Kupac plaća iz banke s 0 € naknade, novac stiže izravno trgovcu za ~12 s, a MPT ga nikad ne drži. U produkciji na pay.domovina.ai.",
+	pages: {
+		home: {
+			title: "MPT — kupac plaća iz banke, novac stiže izravno trgovcu",
+			description:
+				"MPT (Mint Pay Transfer), proizvod tvrtke ITalk d.o.o., orkestrira plaćanja na Monerium računima trgovaca — kao RevenueCat, ali za SEPA → EURe. Novac stiže izravno trgovcu za ~12 s i MPT ga nikad ne drži. Kupac MPT-u ne plaća ništa.",
+		},
+		flow: {
+			title: "Tok novca i simulacije — MPT",
+			description:
+				"Svaki korak MPT plaćanja: od SEPA uplate kupca do EURe forwarda na adresu trgovca, s izmjerenim vremenima, naknadama i interaktivnim simulacijama.",
+		},
+		pricing: {
+			title: "Cijene — MPT",
+			description:
+				"Kao RevenueCat: hostani MPT je besplatan do 2.500 € mjesečnog prometa, zatim 1%. Bez fiksne naknade po transakciji. Vlastiti MPT je besplatan (MIT). Kupac ne plaća ništa.",
+		},
+		why: {
+			title: "Zašto danas — MPT",
+			description:
+				"Fiksne naknade kartica i bankovnih naloga čine mikrouplate najskupljima. Usporedba naknada po kanalu i zašto rail bez fiksnog dijela ima smisla za lokalnu ekonomiju.",
+		},
 	},
 	nav: {
 		how: "Kako radi",
 		flow: "Tok novca",
-		sim: "Simulacije",
+		pricing: "Cijene",
 		why: "Zašto danas",
 		status: "Stanje",
-		contact: "Kontakt",
+		cta: "Zatraži integraciju",
+	},
+	request: {
+		label: "Zatraži integraciju",
+		email: "ms@mpt.hr",
+		subject: "MPT integracija",
+		body: "Bok,\n\nzanima nas MPT.\n\nOrganizacija:\nWeb / platforma (Shopify, WooCommerce, vlastiti checkout…):\nOčekivani mjesečni promet:\nImamo li već Monerium račun (da / ne):\n\nHvala!",
 	},
 	hero: {
 		eyebrow: "Mint Pay Transfer · proizvod tvrtke ITalk d.o.o.",
 		title: "Kupac plaća iz banke.",
 		titleAccent: "Novac stiže izravno trgovcu.",
 		subtitle:
-			"MPT je orkestrator za Monerium račune trgovaca — ono što je RevenueCat za pretplate u aplikacijama, MPT je za SEPA plaćanja u EURe. Svaki trgovac ima vlastiti IBAN i Safe; MPT vodi checkout, reference, routing, webhookove i status uživo, a novac nikad ne drži. Kupac plaća 0 € naknade.",
-		ctaPrimary: "Kako MPT radi",
-		ctaSecondary: "Javi se",
+			"MPT je ono što je RevenueCat za pretplate u aplikacijama — samo za SEPA plaćanja u EURe. Svaki trgovac ima vlastiti Monerium IBAN i Safe; MPT vodi checkout, reference, routing, webhookove i status uživo, a novac nikad ne drži.",
+		ctaPrimary: "Zatraži integraciju",
+		ctaSecondary: "Pogledaj tok novca",
 		cardLabel: "Izmjereno u produkciji · listopad 2026.",
 		cardTotal: "~12 s",
 		cardTotalNote: "od uplate u banci do statusa „paid“ kod trgovca",
 		cardRows: [
 			{ label: "Kupac vidi „zaprimljeno“", value: "~5 s" },
-			{ label: "Naknada kupca", value: "0,00 €" },
+			{ label: "Naknada kupca (SEPA Instant iz Revoluta)", value: "0,00 €" },
 			{ label: "Tko drži novac", value: "trgovac" },
 		],
+		cardFootnote: "Prvi tenant u produkciji: ITalk d.o.o. Drugi trgovci uključuju se nakon KYB-a.",
 	},
 	how: {
 		title: "Orkestrator, ne posrednik",
@@ -49,6 +80,7 @@ const hr = {
 				mpt: "checkout intenti, reference, routing, webhookovi, status uživo",
 			},
 			{ aspect: "Integracija", rc: "jedan SDK za obje trgovine", mpt: "jedan API za sve Monerium račune (tenante)" },
+			{ aspect: "Cijena", rc: "besplatno do 2.500 $ mjesečno, zatim 1%", mpt: "besplatno do 2.500 € mjesečno, zatim 1%" },
 		],
 		cards: [
 			{
@@ -57,7 +89,7 @@ const hr = {
 			},
 			{
 				title: "Jedna integracija, ista poslovna logika",
-				text: "Checkout intent s EPC QR kodom, stanja pending → zaprimljeno → paid → expired, status uživo preko SSE-a i webhookovi (received · paid · rejected · late) s trajnim outboxom koji ponavlja isporuku do ~47 h.",
+				text: "Checkout intent s EPC QR kodom, stanja pending → zaprimljeno → paid → expired, status uživo preko SSE-a i potpisani webhookovi s trajnim outboxom koji ponavlja isporuku do ~47 h.",
 			},
 			{
 				title: "Otporno na stvarne uplate",
@@ -68,17 +100,88 @@ const hr = {
 				text: "Cijeli rail je na GitHubu pod MIT licencom. Tko želi, pokrene vlastitu instancu; tko ne želi voditi infrastrukturu, koristi hostani MPT — kao što većina aplikacija koristi RevenueCat umjesto vlastitog backenda za pretplate.",
 			},
 		],
-		codeLink: { label: "github.com/domovinatv/pay.domovina.ai", href: "https://github.com/domovinatv/pay.domovina.ai" },
+	},
+	integrate: {
+		title: "Integracija u tri koraka",
+		subtitle:
+			"Tvoj backend kreira intent, kupac plati iz banke, a ti dobiješ webhook kad je novac na tvojoj adresi. Javna dokumentacija API-ja je u izradi — dotad integraciju radimo zajedno.",
+		steps: [
+			{
+				num: "01",
+				title: "Kreiraj intent",
+				text: "Pošalji iznos i jednu od svojih odobrenih adresa. Dobiješ referencu, EPC QR, checkout stranicu i URL za status uživo.",
+			},
+			{
+				num: "02",
+				title: "Kupac plati iz banke",
+				text: "Kupac skenira QR i pošalje SEPA uplatu. Checkout preko SSE-a pokaže „zaprimljeno“ već nakon ~5 s.",
+			},
+			{
+				num: "03",
+				title: "Primi webhook",
+				text: "intent.paid stiže kad je forward potvrđen onchain, ~12 s od uplate. Postoje i payment.received, payment.underpaid, payment.rejected i payment.late.",
+			},
+		],
+		requestTitle: "Zahtjev",
+		webhookTitle: "Webhook",
+		orderLabel: "Narudžba #1042",
+		note: "Primjer je skraćen; adrese i ključevi su ilustrativni.",
+		cta: "Javi se za integraciju i consulting",
+	},
+	audiences: {
+		title: "Za koga je MPT",
+		subtitle: "Svatko tko prima uplate u eurima i želi ih primati bez kartične provizije — na vlastiti račun.",
+		items: [
+			{
+				title: "Web trgovine",
+				text: "Checkout s EPC QR kodom preko API-ja ili kao način plaćanja u trgovini. Shopify je spojen i čeka prvi test na stvarnoj trgovini; WooCommerce je u planu.",
+			},
+			{
+				title: "Udruge, župe i projekti",
+				text: "Donacije bez naknade za darovatelja i trajni QR za kampanje — jedan QR, mnogo uplata, svaka zasebno prijavljena. Kao na donate.domovina.ai.",
+			},
+			{
+				title: "Developeri i fintech timovi",
+				text: "Otvoreni kod (MIT): pokreni vlastiti MPT ili nas angažiraj za integraciju, postavljanje i consulting.",
+			},
+		],
+	},
+	pricingTeaser: {
+		title: "Cijene kao RevenueCat: plaćaš tek kad rasteš",
+		text: "Kupac MPT-u ne plaća ništa. Trgovac 0 € do 2.500 € mjesečnog prometa, zatim 1% — bez fiksne naknade po transakciji. Vlastiti MPT je besplatan.",
+		link: "Pogledaj cijene",
+	},
+	trust: {
+		title: "Što MPT jest, a što nije",
+		subtitle: "Bez sitnih slova: tko što radi i tko odgovara za novac.",
+		items: [
+			{
+				title: "Softver, ne platna institucija",
+				text: "ITalk d.o.o. je non-custodial pružatelj softvera. MPT ne prima ni ne drži novac kupaca i nije licencirana platna usluga.",
+			},
+			{
+				title: "Regulirano radi Monerium",
+				text: "Izdavanje e-novca (EURe, EMI / MiCA EMT), IBAN i KYC/KYB trgovca obavlja licencirani izdavatelj Monerium, na ugovoru s trgovcem.",
+			},
+			{
+				title: "Novac je trgovčev",
+				text: "IBAN i Safe pripadaju trgovcu. MPT smije samo proslijediti EURe na adrese koje je trgovac odobrio — onchain ograničeno Zodiac Rolesom.",
+			},
+			{
+				title: "Provjerljivo",
+				text: "Kod je otvoren (MIT), svaki forward je javno vidljiv onchain, a stanje sustava objavljujemo bez uljepšavanja — ispod.",
+			},
+		],
 	},
 	flow: {
 		title: "Dokumentirani tok novca",
 		subtitle:
-			"Svaki korak, svaki račun i svaki prijelaz — tko što radi, koliko traje i tko plaća koju naknadu. Kupac na svakom koraku plaća 0 €.",
+			"Svaki korak, svaki račun i svaki prijelaz — tko što radi, koliko traje i tko plaća koju naknadu.",
 		steps: [
 			{
 				num: "01",
-				title: "Kupac plaća iz svoje banke — 0 €",
-				text: "Debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya kupac napuni Revolut (min. 10 €, Revolutov produktni limit), pa na checkoutu skenira EPC QR i pošalje SEPA Instant (min. 1 €). Kartičnu i SEPA transakciju plaća Revolut. U referenci piše kome novac ide: mpt:0x<trgovac>?sid=<intent>.",
+				title: "Kupac plaća iz svoje banke",
+				text: "Najjeftiniji put: debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya kupac napuni Revolut (min. 10 €, Revolutov produktni limit), pa na checkoutu skenira EPC QR i pošalje SEPA Instant (min. 1 €) — kartičnu i SEPA transakciju plaća Revolut, kupac 0 €. Uplata izravno iz klasične hrvatske banke također radi, ali tada kupac plaća naknadu svoje banke za nalog. U referenci piše kome novac ide: mpt:0x<trgovac>?sid=<intent>.",
 			},
 			{
 				num: "02",
@@ -93,7 +196,7 @@ const hr = {
 			{
 				num: "04",
 				title: "Ako se referenca izgubi — novac svejedno stiže",
-				text: "Revolut iOS ponekad ispusti referencu iz QR koda. Resolver tada uplatu poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu: ako je kandidat jednoznačan, forward ide automatski; inače novac ostaje parkiran na Safeu trgovca dok ga operater ručno ne preusmjeri. Manja uplata od iznosa intenta nikad ne postaje „paid“.",
+				text: "Kad referenca izostane (Revolut iOS je ponekad ispusti iz QR koda), resolver uplatu poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu: ako je kandidat jednoznačan, forward ide automatski; inače novac ostaje parkiran na Safeu trgovca dok ga operater ručno ne preusmjeri. Manja uplata od iznosa intenta nikad ne postaje „paid“.",
 			},
 		],
 		notes: [
@@ -120,13 +223,13 @@ const hr = {
 		live: {
 			title: "U produkciji",
 			items: [
-				"Checkout intenti s EPC QR kodom — do 10.000 € po intentu, valjanost 15 min do 24 h",
+				"Checkout intenti s EPC QR kodom — do 10.000 € po intentu, valjanost zadano 15 min, najviše 24 h",
 				"„Zaprimljeno“ odmah i status uživo preko SSE-a (od 5. 10. 2026.)",
-				"Webhookovi za trgovce (received · paid · rejected · late) s trajnim outboxom",
+				"Potpisani webhookovi za trgovce (received · paid · underpaid · rejected · late) s trajnim outboxom",
 				"Uplate bez reference: automatsko povezivanje s intentom (od 8. 10. 2026.)",
 				"Isplata samo na odobrene adrese tenanta — fail-closed (od 1. 8. 2026.)",
 				"Nadzor Safea: alarm za svaki izlaz koji nije MPT-ov forward",
-				"Nezavisni code reviewi — svih 17 kritičnih i visokih nalaza drugog kruga riješeno 10. 10. 2026.; CI na svakom PR-u",
+				"Nezavisni code reviewi s riješenim nalazima i CI na svakom PR-u",
 			],
 		},
 		prep: {
@@ -135,6 +238,7 @@ const hr = {
 				"Drugi tenanti s vlastitim Monerium računom — kod je u produkciji, uključuje se s prvim trgovcem koji završi KYB",
 				"Shopify: MPT kao način plaćanja s QR kodom — kod spojen, prvi test na stvarnoj trgovini predstoji",
 				"WooCommerce — plan",
+				"Javna dokumentacija API-ja",
 				"Gnosis Pay VISA grana — pre-pilot",
 				"Potpisivanje forwarda izvan clouda (M-of-N kvorum uređaja) — prijedlog",
 			],
@@ -148,13 +252,91 @@ const hr = {
 			],
 		},
 	},
+	pricing: {
+		eyebrow: "Cijene",
+		title: "Plaćaš tek kad rasteš",
+		subtitle:
+			"Isti model kao RevenueCat: besplatno do praga, zatim mali postotak prometa koji MPT orkestrira. Bez fiksne naknade po transakciji — zato se isplate i mikrouplate. Kupac MPT-u nikad ne plaća ništa.",
+		plans: [
+			{
+				name: "Hostani MPT",
+				price: "0 €",
+				priceNote: "do 2.500 € mjesečnog prometa, zatim 1%",
+				features: [
+					"Sve funkcije: checkout intenti, EPC QR, status uživo, webhookovi",
+					"Uplate bez reference — automatsko povezivanje s intentom",
+					"Gas za forward plaća MPT",
+					"Vlastiti Monerium IBAN i Safe — novac je uvijek tvoj",
+				],
+				cta: "Zatraži integraciju",
+				kind: "request" as const,
+				featured: true,
+			},
+			{
+				name: "Enterprise",
+				price: "Po dogovoru",
+				priceNote: "za veći promet i posebne zahtjeve",
+				features: [
+					"Volumni popusti",
+					"Integracija i consulting",
+					"Prilagođeni limiti i SLA po dogovoru",
+					"Izravna podrška",
+				],
+				cta: "Razgovarajmo",
+				kind: "request" as const,
+				featured: false,
+			},
+			{
+				name: "Vlastiti MPT",
+				price: "0 €",
+				priceNote: "otvoreni kod, MIT licenca",
+				features: [
+					"Cijeli rail na GitHubu",
+					"Sam vodiš infrastrukturu, Monerium račun i Safe",
+					"Bez naknade ITalku",
+					"Consulting za postavljanje na upit",
+				],
+				cta: "Kod na GitHubu",
+				kind: "github" as const,
+				featured: false,
+			},
+		],
+		note: "Cjenik vrijedi za vanjske tenante hostanog MPT-a; prvi se uključuju nakon što završe KYB kod Moneriuma. Moneriumove naknade, ako ih predviđa tvoj ugovor s Moneriumom, nisu dio MPT cijene. Cijene su bez PDV-a.",
+		faqTitle: "Česta pitanja",
+		faq: [
+			{
+				q: "Što se računa kao promet?",
+				a: "Zbroj uplata koje su u kalendarskom mjesecu kod tebe dobile status „paid“, uključujući one povezane bez reference. Uplate koje nisu stigle do tebe ne ulaze u promet.",
+			},
+			{
+				q: "Plaća li kupac išta?",
+				a: "MPT-u ne. Preko Revoluta su i kartični top-up i SEPA Instant besplatni; iz klasične hrvatske banke kupac plaća naknadu svoje banke za nalog (0,25–0,45 €).",
+			},
+			{
+				q: "Uzima li MPT postotak iz same uplate?",
+				a: "Ne. Puni iznos stiže na tvoju adresu; naknada se obračunava zasebno, mjesečno, prema ugovoru.",
+			},
+			{
+				q: "Što ako jedan mjesec prijeđem 2.500 €, a sljedeći ne?",
+				a: "Prag se gleda za svaki mjesec posebno: mjesec s prometom do 2.500 € je besplatan.",
+			},
+			{
+				q: "Zašto postotak, a ne fiksna naknada po transakciji?",
+				a: "Fiksni dio ubija mikrouplate — na 2 € kartica uzme 14%. Postotak bez fiksnog dijela znači da je uplata od 1 € jednako isplativa kao uplata od 1.000 €.",
+			},
+			{
+				q: "Mogu li kasnije prijeći na vlastiti MPT?",
+				a: "Da. IBAN i Safe su tvoji od prvog dana; vlastita instanca samo preuzima orkestraciju.",
+			},
+		],
+	},
 	why: {
 		title: "Zašto ovo danas ima smisla",
 		subtitle:
-			"Svako kartično plaćanje u maloprodaji i svaki SEPA nalog iz klasične hrvatske banke nosi naknadu posrednika. MPT pokazuje da lokalna ekonomija može imati suvereni platni sustav: novac putuje izravno od platitelja do primatelja — bez postotka koji odlazi kartičnim shemama i procesorima, bez fiksnog bankovnog naloga — a svaki transfer ostavlja javni, provjerljivi trag.",
+			"Svako kartično plaćanje u maloprodaji i svaki SEPA nalog iz klasične hrvatske banke nosi naknadu posrednika s fiksnim dijelom. MPT pokazuje da lokalna ekonomija može imati vlastiti platni rail: novac putuje izravno od platitelja do primatelja — bez postotka koji odlazi kartičnim shemama i procesorima, bez fiksnog bankovnog naloga — a svaki transfer ostavlja javni, provjerljivi trag.",
 		tableHead: {
 			channel: "Kanal",
-			fee: "Naknada po transakciji",
+			fee: "Tko plaća koliko",
 			at1: "Na 1 €",
 			at2: "Na 2 €",
 			at5: "Na 5 €",
@@ -163,16 +345,16 @@ const hr = {
 		channels: [
 			{
 				name: "MPT rail (EURe, Gnosis)",
-				fee: "0 € za kupca (gas ~0,001 €, sponzoriran)",
-				at1: "0,00 € · 0%",
-				at2: "0,00 € · 0%",
-				at5: "0,00 € · 0%",
-				at100: "0,00 € · 0%",
+				fee: "kupac 0 € · trgovac 0 € do 2.500 €/mj., zatim 1% · gas plaća MPT",
+				at1: "0,00–0,01 € · 0–1%",
+				at2: "0,00–0,02 € · 0–1%",
+				at5: "0,00–0,05 € · 0–1%",
+				at100: "0,00–1,00 € · 0–1%",
 				tone: "win" as const,
 			},
 			{
 				name: "Kartica (Stripe EEA)",
-				fee: "1,5% + 0,25 €",
+				fee: "1,5% + 0,25 € — plaća trgovac",
 				at1: "0,27 € · 26,5%",
 				at2: "0,28 € · 14%",
 				at5: "0,33 € · 6,5%",
@@ -181,7 +363,7 @@ const hr = {
 			},
 			{
 				name: "SEPA nalog (HR banke)",
-				fee: "0,25–0,45 € fiksno — plaća pošiljatelj",
+				fee: "0,25–0,45 € fiksno — plaća kupac",
 				at1: "do 0,45 € · do 45%",
 				at2: "do 0,45 € · do 22,5%",
 				at5: "do 0,45 € · do 9%",
@@ -192,19 +374,19 @@ const hr = {
 		points: [
 			{
 				title: "Fiksna naknada ubija mikrouplate",
-				text: "Na uplati od 2 € kartična naknada iznosi 14%, a fiksni bankovni nalog i do 22,5%. Male, česte uplate — upravo one od kojih živi lokalna maloprodaja — danas su najskuplje. Jedino transfer bez fiksnog dijela ni na jednoj strani čini mikrouplate isplativima.",
+				text: "Na uplati od 2 € kartična naknada iznosi 14%, a fiksni bankovni nalog i do 22,5%. Male, česte uplate — upravo one od kojih živi lokalna maloprodaja — danas su najskuplje. Tek naknada bez fiksnog dijela čini mikrouplate isplativima.",
 			},
 			{
 				title: "Novac ostaje u lokalnoj ekonomiji",
-				text: "Postotak svake kartične transakcije odlazi shemama i procesorima izvan lokalnog kruga. Na MPT railu puni iznos stiže primatelju — razlika koja se na tisućama transakcija akumulira u ozbiljan novac koji ostaje trgovcu i zajednici.",
+				text: "Postotak svake kartične transakcije odlazi shemama i procesorima izvan lokalnog kruga. Na MPT railu puni iznos stiže primatelju, a orkestracija se obračunava zasebno i manja je od kartične provizije na svakom iznosu.",
 			},
 			{
-				title: "Suverenost bez posrednika",
-				text: "Rail počiva na reguliranom e-novcu (EURe, licencirani izdavatelj Monerium) u samoskrbništvu korisnika. Između platitelja i primatelja nema posrednika koji naplaćuje maržu — lokalna ekonomija dobiva platni sustav kojim sama raspolaže.",
+				title: "Rail kojim raspolažu sami",
+				text: "Rail počiva na reguliranom e-novcu (EURe, licencirani izdavatelj Monerium) na računu i Safeu samog primatelja. Između platitelja i primatelja nema kartičnih shema ni procesora, a kod je otvoren — tko želi, vodi vlastiti MPT.",
 			},
 			{
 				title: "Javni, provjerljivi trag",
-				text: "Za razliku od gotovine i kartičnih obračuna, svaki transfer javno je vidljiv i auditabilan onchain — transparentnost za kupca, trgovca i zajednicu, bez odricanja od samoskrbništva.",
+				text: "Za razliku od gotovine i kartičnih obračuna, svaki transfer javno je vidljiv i auditabilan onchain — transparentnost za kupca, trgovca i zajednicu.",
 			},
 		],
 		sourceNote:
@@ -213,24 +395,26 @@ const hr = {
 			label: "lom.ff.hr/dokumenti/isplativost",
 			href: "https://lom.ff.hr/dokumenti/isplativost",
 		},
+		calcLink: "Izračunaj za svoju trgovinu u kalkulatoru na stranici s cijenama",
 	},
 	savings: {
-		title: "Potencijalna ušteda hrvatske maloprodaje",
-		subtitle: "Ilustrativni izračun — naknade koje posrednici danas uzmu, a na MPT railu ne postoje.",
+		title: "Kalkulator: koliko danas odlazi posrednicima",
+		subtitle: "Ilustrativni izračun za jednog trgovca — kartična provizija, bankovni nalozi kupaca i MPT po cjeniku.",
 		txPerDay: "Transakcija dnevno",
 		avgAmount: "Prosječni iznos (€)",
 		perTx: "Naknada po transakciji",
 		daily: "Dnevno",
 		monthly: "Mjesečno",
 		yearly: "Godišnje",
-		vsCard: "vs. kartica",
-		vsSepa: "vs. SEPA nalog",
-		note: "Kartica: 1,5% + 0,25 € po transakciji (Stripe EEA). SEPA: fiksni nalog 0,25–0,45 € po transakciji (HR banke, plaća pošiljatelj). Mjesec = 30 dana, godina = 365.",
+		vsCard: "Kartica",
+		vsSepa: "SEPA nalog",
+		mpt: "MPT",
+		note: "Kartica: 1,5% + 0,25 € po transakciji, plaća trgovac (Stripe EEA). SEPA: fiksni nalog 0,25–0,45 € po transakciji, plaća kupac (HR banke). MPT: 0 € do 2.500 € mjesečnog prometa, zatim 1%, plaća trgovac. Mjesec = 30 dana, godina = 365.",
 	},
 	sim: {
 		title: "Simulacije korak po korak",
 		subtitle:
-			"Cijeli tok modeliran je kao state machine sa svim čvorovima, prijelazima i zaštitnim limitima. Odaberi scenarij — od plaćanja trgovcu iz banke do uplate bez reference — i prati novac korak po korak — dijagram pokazuje gdje je novac, dnevnik tko je što napravio i tko je platio.",
+			"Cijeli tok modeliran je kao state machine sa svim čvorovima, prijelazima i zaštitnim limitima. Odaberi scenarij — od plaćanja trgovcu iz banke do uplate bez reference — i prati novac korak po korak: dijagram pokazuje gdje je novac, dnevnik tko je što napravio i tko je platio.",
 		labels: {
 			pickScenario: "Scenarij",
 			start: "Kreni",
@@ -262,21 +446,21 @@ const hr = {
 	cta: {
 		title: "Želiš primati uplate preko MPT-a?",
 		subtitle:
-			"Trgovine, udruge, župe i projekti — svatko s vlastitim Monerium računom, a MPT vodi ostalo. Ili pokreni vlastiti MPT: kod je otvoren. Razgovor se vodi javno u Telegram grupi, gdje nas možeš dobiti i osobno.",
-		button: { label: "Pridruži se: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
-		secondary: { label: "ili e-poštom: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
+			"Opiši nam svoju trgovinu, udrugu ili projekt i javimo se s prijedlogom integracije. Ako želiš vlastiti MPT, pomažemo i s postavljanjem.",
+		community: { label: "Pitanja i zajednica: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+		github: { label: "Kod na GitHubu", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
 	footer: {
 		columns: [
 			{
 				title: "Proizvod",
 				links: [
-					{ label: "Kako radi", href: "#how" },
-					{ label: "Tok novca", href: "#flow" },
-					{ label: "Simulacije", href: "#sim" },
-					{ label: "Zašto danas", href: "#why" },
-					{ label: "Stanje", href: "#status" },
-					{ label: "Kontakt", href: "#contact" },
+					{ label: "Kako radi", href: "/#how" },
+					{ label: "Integracija", href: "/#integrate" },
+					{ label: "Cijene", href: "/pricing" },
+					{ label: "Tok novca i simulacije", href: "/flow" },
+					{ label: "Zašto danas", href: "/why" },
+					{ label: "Stanje", href: "/#status" },
 				],
 			},
 			{
@@ -288,10 +472,12 @@ const hr = {
 				],
 			},
 			{
-				title: "Tvrtka",
+				title: "Kontakt",
 				links: [
-					{ label: "airkuna.com", href: "https://airkuna.com" },
+					{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
+					{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 					{ label: "ITalk d.o.o.", href: "https://italk.hr" },
+					{ label: "airkuna.com", href: "https://airkuna.com" },
 				],
 			},
 		],
@@ -299,46 +485,65 @@ const hr = {
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"je proizvod tvrtke ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Hrvatska · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Trgovački sud u Zagrebu · direktor: Matija Stepanić",
-		imprintLinks: [
-			{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
-			{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
-			{ label: "italk.hr", href: "https://italk.hr" },
-		],
 		copyright: "MPT / ITalk d.o.o.",
 	},
-	langSwitch: { label: "EN", href: "/en", ariaLabel: "Switch to English" },
+	langSwitch: { label: "EN", target: "en" as Locale, ariaLabel: "Switch to English" },
 };
 
 const en: typeof hr = {
-	meta: {
-		title: "MPT — the buyer pays from the bank, the money goes straight to the merchant",
-		description:
-			"MPT (Mint Pay Transfer), a product by ITalk d.o.o., orchestrates payments on merchants' Monerium accounts — like RevenueCat, but for SEPA → EURe. The buyer pays from the bank with €0 in fees, the money reaches the merchant in ~12 s, and MPT never holds it. In production at pay.domovina.ai.",
+	pages: {
+		home: {
+			title: "MPT — the buyer pays from the bank, the money goes straight to the merchant",
+			description:
+				"MPT (Mint Pay Transfer), a product by ITalk d.o.o., orchestrates payments on merchants' Monerium accounts — like RevenueCat, but for SEPA → EURe. The money reaches the merchant in ~12 s and MPT never holds it. The buyer pays MPT nothing.",
+		},
+		flow: {
+			title: "Money flow and simulations — MPT",
+			description:
+				"Every step of an MPT payment: from the buyer's SEPA transfer to the EURe forward to the merchant's address, with measured timings, fees and interactive simulations.",
+		},
+		pricing: {
+			title: "Pricing — MPT",
+			description:
+				"Like RevenueCat: hosted MPT is free up to €2,500 in monthly volume, then 1%. No fixed fee per transaction. Self-hosted MPT is free (MIT). The buyer pays nothing.",
+		},
+		why: {
+			title: "Why now — MPT",
+			description:
+				"Fixed card and bank-order fees make micropayments the most expensive ones. A fee comparison per channel and why a rail with no fixed component makes sense for a local economy.",
+		},
 	},
 	nav: {
 		how: "How it works",
 		flow: "Money flow",
-		sim: "Simulations",
+		pricing: "Pricing",
 		why: "Why now",
 		status: "Status",
-		contact: "Contact",
+		cta: "Request integration",
+	},
+	request: {
+		label: "Request integration",
+		email: "ms@mpt.hr",
+		subject: "MPT integration",
+		body: "Hi,\n\nwe're interested in MPT.\n\nOrganisation:\nWebsite / platform (Shopify, WooCommerce, custom checkout…):\nExpected monthly volume:\nDo we already have a Monerium account (yes / no):\n\nThanks!",
 	},
 	hero: {
 		eyebrow: "Mint Pay Transfer · a product by ITalk d.o.o.",
 		title: "The buyer pays from the bank.",
 		titleAccent: "The money goes straight to the merchant.",
 		subtitle:
-			"MPT is an orchestrator for merchants' Monerium accounts — what RevenueCat is for in-app subscriptions, MPT is for SEPA payments in EURe. Every merchant has its own IBAN and Safe; MPT runs the checkout, references, routing, webhooks and live status, and never holds the money. The buyer pays €0 in fees.",
-		ctaPrimary: "How MPT works",
-		ctaSecondary: "Get in touch",
+			"MPT is what RevenueCat is for in-app subscriptions — only for SEPA payments in EURe. Every merchant has its own Monerium IBAN and Safe; MPT runs the checkout, references, routing, webhooks and live status, and never holds the money.",
+		ctaPrimary: "Request integration",
+		ctaSecondary: "See the money flow",
 		cardLabel: "Measured in production · October 2026",
 		cardTotal: "~12 s",
 		cardTotalNote: "from the bank payment to “paid” at the merchant",
 		cardRows: [
 			{ label: "Buyer sees “received”", value: "~5 s" },
-			{ label: "Buyer's fee", value: "€0.00" },
+			{ label: "Buyer's fee (SEPA Instant from Revolut)", value: "€0.00" },
 			{ label: "Who holds the money", value: "the merchant" },
 		],
+		cardFootnote: "First tenant in production: ITalk d.o.o. Further merchants switch on after KYB.",
 	},
 	how: {
 		title: "An orchestrator, not an intermediary",
@@ -358,6 +563,7 @@ const en: typeof hr = {
 				mpt: "checkout intents, references, routing, webhooks, live status",
 			},
 			{ aspect: "Integration", rc: "one SDK for both stores", mpt: "one API for every Monerium account (tenant)" },
+			{ aspect: "Price", rc: "free up to $2,500 a month, then 1%", mpt: "free up to €2,500 a month, then 1%" },
 		],
 		cards: [
 			{
@@ -366,7 +572,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "One integration, the same business logic",
-				text: "A checkout intent with an EPC QR code, states pending → received → paid → expired, live status over SSE, and webhooks (received · paid · rejected · late) with a durable outbox that retries delivery for up to ~47 h.",
+				text: "A checkout intent with an EPC QR code, states pending → received → paid → expired, live status over SSE, and signed webhooks with a durable outbox that retries delivery for up to ~47 h.",
 			},
 			{
 				title: "Built for real-world payments",
@@ -377,17 +583,88 @@ const en: typeof hr = {
 				text: "The whole rail is on GitHub under the MIT license. Anyone can run their own instance; those who'd rather not operate infrastructure use the hosted MPT — just as most apps use RevenueCat instead of building their own subscription backend.",
 			},
 		],
-		codeLink: { label: "github.com/domovinatv/pay.domovina.ai", href: "https://github.com/domovinatv/pay.domovina.ai" },
+	},
+	integrate: {
+		title: "Integration in three steps",
+		subtitle:
+			"Your backend creates an intent, the buyer pays from the bank, and you get a webhook once the money is at your address. Public API docs are in the works — until then we do the integration together.",
+		steps: [
+			{
+				num: "01",
+				title: "Create an intent",
+				text: "Send the amount and one of your approved addresses. You get a reference, an EPC QR, a checkout page and a live-status URL.",
+			},
+			{
+				num: "02",
+				title: "The buyer pays from the bank",
+				text: "The buyer scans the QR and sends a SEPA transfer. The checkout shows “received” over SSE after ~5 s.",
+			},
+			{
+				num: "03",
+				title: "Receive the webhook",
+				text: "intent.paid arrives once the forward is confirmed onchain, ~12 s after the payment. There are also payment.received, payment.underpaid, payment.rejected and payment.late.",
+			},
+		],
+		requestTitle: "Request",
+		webhookTitle: "Webhook",
+		orderLabel: "Order #1042",
+		note: "The example is shortened; addresses and keys are illustrative.",
+		cta: "Get in touch for integration and consulting",
+	},
+	audiences: {
+		title: "Who MPT is for",
+		subtitle: "Anyone who takes payments in euros and wants them without card fees — straight to their own account.",
+		items: [
+			{
+				title: "Online shops",
+				text: "A checkout with an EPC QR code through the API or as a payment method in the shop. Shopify is merged and awaiting its first test on a real store; WooCommerce is planned.",
+			},
+			{
+				title: "Associations, parishes and projects",
+				text: "Donations with no fee for the donor and a permanent campaign QR — one QR, many payments, each reported separately. As on donate.domovina.ai.",
+			},
+			{
+				title: "Developers and fintech teams",
+				text: "Open source (MIT): run your own MPT, or hire us for integration, setup and consulting.",
+			},
+		],
+	},
+	pricingTeaser: {
+		title: "Priced like RevenueCat: you pay only when you grow",
+		text: "The buyer pays MPT nothing. The merchant pays €0 up to €2,500 in monthly volume, then 1% — no fixed fee per transaction. Self-hosted MPT is free.",
+		link: "See pricing",
+	},
+	trust: {
+		title: "What MPT is, and what it isn't",
+		subtitle: "No fine print: who does what, and who is responsible for the money.",
+		items: [
+			{
+				title: "Software, not a payment institution",
+				text: "ITalk d.o.o. is a non-custodial software provider. MPT neither receives nor holds buyers' money and is not a licensed payment service.",
+			},
+			{
+				title: "Monerium does the regulated part",
+				text: "E-money issuance (EURe, EMI / MiCA EMT), the IBAN and the merchant's KYC/KYB are handled by the licensed issuer Monerium, under its contract with the merchant.",
+			},
+			{
+				title: "The money is the merchant's",
+				text: "The IBAN and Safe belong to the merchant. MPT may only forward EURe to addresses the merchant has approved — restricted onchain by Zodiac Roles.",
+			},
+			{
+				title: "Verifiable",
+				text: "The code is open (MIT), every forward is publicly visible onchain, and we publish the state of the system without embellishment — below.",
+			},
+		],
 	},
 	flow: {
 		title: "The documented money flow",
 		subtitle:
-			"Every step, every account and every transition — who does what, how long it takes and who pays each fee. The buyer pays €0 at every step.",
+			"Every step, every account and every transition — who does what, how long it takes and who pays each fee.",
 		steps: [
 			{
 				num: "01",
-				title: "The buyer pays from their own bank — €0",
-				text: "Using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the buyer tops up Revolut (min. €10, a Revolut product limit), then scans the EPC QR at checkout and sends a SEPA Instant (min. €1). Revolut pays both the card and the SEPA transaction. The reference says who the money is for: mpt:0x<merchant>?sid=<intent>.",
+				title: "The buyer pays from their own bank",
+				text: "The cheapest path: using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the buyer tops up Revolut (min. €10, a Revolut product limit), then scans the EPC QR at checkout and sends a SEPA Instant (min. €1) — Revolut pays both the card and the SEPA transaction, the buyer pays €0. Paying straight from a classic Croatian bank works too, but then the buyer pays their bank's order fee. The reference says who the money is for: mpt:0x<merchant>?sid=<intent>.",
 			},
 			{
 				num: "02",
@@ -402,7 +679,7 @@ const en: typeof hr = {
 			{
 				num: "04",
 				title: "If the reference gets lost — the money still arrives",
-				text: "Revolut iOS sometimes drops the reference from the QR code. The resolver then links the payment to an open intent of the same merchant by exact amount and time: if the candidate is unambiguous, the forward runs automatically; otherwise the money stays parked in the merchant's Safe until an operator reroutes it by hand. A payment smaller than the intent never becomes “paid”.",
+				text: "When the reference is missing (Revolut iOS sometimes drops it from the QR code), the resolver links the payment to an open intent of the same merchant by exact amount and time: if the candidate is unambiguous, the forward runs automatically; otherwise the money stays parked in the merchant's Safe until an operator reroutes it by hand. A payment smaller than the intent never becomes “paid”.",
 			},
 		],
 		notes: [
@@ -429,13 +706,13 @@ const en: typeof hr = {
 		live: {
 			title: "In production",
 			items: [
-				"Checkout intents with an EPC QR code — up to €10,000 per intent, valid 15 min to 24 h",
+				"Checkout intents with an EPC QR code — up to €10,000 per intent, valid 15 min by default, 24 h at most",
 				"“Received” right away and live status over SSE (since 5 Oct 2026)",
-				"Merchant webhooks (received · paid · rejected · late) with a durable outbox",
+				"Signed merchant webhooks (received · paid · underpaid · rejected · late) with a durable outbox",
 				"Payments without a reference: automatic matching to an intent (since 8 Oct 2026)",
 				"Payouts only to the tenant's approved addresses — fail-closed (since 1 Aug 2026)",
 				"Safe monitoring: an alert for every outflow that isn't an MPT forward",
-				"Independent code reviews — all 17 critical and high findings of the second round fixed on 10 Oct 2026; CI on every PR",
+				"Independent code reviews with findings resolved, and CI on every PR",
 			],
 		},
 		prep: {
@@ -444,6 +721,7 @@ const en: typeof hr = {
 				"Further tenants with their own Monerium account — the code is in production and switches on with the first merchant to complete KYB",
 				"Shopify: MPT as a payment method with a QR code — code merged, the first test on a real store is upcoming",
 				"WooCommerce — planned",
+				"Public API documentation",
 				"Gnosis Pay VISA branch — pre-pilot",
 				"Signing forwards outside the cloud (an M-of-N device quorum) — proposal",
 			],
@@ -457,13 +735,91 @@ const en: typeof hr = {
 			],
 		},
 	},
+	pricing: {
+		eyebrow: "Pricing",
+		title: "You pay only when you grow",
+		subtitle:
+			"The same model as RevenueCat: free up to a threshold, then a small percentage of the volume MPT orchestrates. No fixed fee per transaction — so micropayments pay off too. The buyer never pays MPT anything.",
+		plans: [
+			{
+				name: "Hosted MPT",
+				price: "€0",
+				priceNote: "up to €2,500 in monthly volume, then 1%",
+				features: [
+					"Every feature: checkout intents, EPC QR, live status, webhooks",
+					"Payments without a reference — automatic intent matching",
+					"MPT pays the forward gas",
+					"Your own Monerium IBAN and Safe — the money is always yours",
+				],
+				cta: "Request integration",
+				kind: "request" as const,
+				featured: true,
+			},
+			{
+				name: "Enterprise",
+				price: "Custom",
+				priceNote: "for higher volume and special requirements",
+				features: [
+					"Volume discounts",
+					"Integration and consulting",
+					"Custom limits and SLA by agreement",
+					"Direct support",
+				],
+				cta: "Let's talk",
+				kind: "request" as const,
+				featured: false,
+			},
+			{
+				name: "Self-hosted MPT",
+				price: "€0",
+				priceNote: "open source, MIT license",
+				features: [
+					"The whole rail on GitHub",
+					"You run the infrastructure, the Monerium account and the Safe",
+					"No fee to ITalk",
+					"Setup consulting on request",
+				],
+				cta: "Code on GitHub",
+				kind: "github" as const,
+				featured: false,
+			},
+		],
+		note: "This pricing applies to external tenants of hosted MPT; the first ones switch on after completing KYB with Monerium. Monerium's own fees, if your contract with Monerium has any, are not part of the MPT price. Prices exclude VAT.",
+		faqTitle: "Frequently asked questions",
+		faq: [
+			{
+				q: "What counts as volume?",
+				a: "The sum of payments that reached “paid” at your end within a calendar month, including those matched without a reference. Payments that never reached you don't count.",
+			},
+			{
+				q: "Does the buyer pay anything?",
+				a: "Not to MPT. Through Revolut both the card top-up and the SEPA Instant are free; from a classic Croatian bank the buyer pays their bank's order fee (€0.25–0.45).",
+			},
+			{
+				q: "Does MPT take a cut out of the payment itself?",
+				a: "No. The full amount reaches your address; the fee is billed separately, monthly, under the contract.",
+			},
+			{
+				q: "What if I go over €2,500 one month and not the next?",
+				a: "The threshold applies to each month separately: a month with up to €2,500 in volume is free.",
+			},
+			{
+				q: "Why a percentage and not a fixed fee per transaction?",
+				a: "A fixed component kills micropayments — on €2 a card takes 14%. A percentage with no fixed part makes a €1 payment as worthwhile as a €1,000 one.",
+			},
+			{
+				q: "Can I move to a self-hosted MPT later?",
+				a: "Yes. The IBAN and the Safe are yours from day one; your own instance simply takes over the orchestration.",
+			},
+		],
+	},
 	why: {
 		title: "Why this makes sense today",
 		subtitle:
-			"Every retail card payment and every SEPA order from a classic Croatian bank carries an intermediary fee. MPT shows that a local economy can have a sovereign payment system: money travels directly from payer to payee — without the percentage flowing to card schemes and processors, without the fixed bank order fee — and every transfer leaves a public, verifiable trace.",
+			"Every retail card payment and every SEPA order from a classic Croatian bank carries an intermediary fee with a fixed component. MPT shows that a local economy can have a payment rail of its own: money travels directly from payer to payee — without the percentage flowing to card schemes and processors, without the fixed bank order fee — and every transfer leaves a public, verifiable trace.",
 		tableHead: {
 			channel: "Channel",
-			fee: "Fee per transaction",
+			fee: "Who pays how much",
 			at1: "On €1",
 			at2: "On €2",
 			at5: "On €5",
@@ -472,16 +828,16 @@ const en: typeof hr = {
 		channels: [
 			{
 				name: "MPT rail (EURe, Gnosis)",
-				fee: "€0 for the buyer (gas ~€0.001, sponsored)",
-				at1: "€0.00 · 0%",
-				at2: "€0.00 · 0%",
-				at5: "€0.00 · 0%",
-				at100: "€0.00 · 0%",
+				fee: "buyer €0 · merchant €0 up to €2,500/mo, then 1% · MPT pays gas",
+				at1: "€0.00–0.01 · 0–1%",
+				at2: "€0.00–0.02 · 0–1%",
+				at5: "€0.00–0.05 · 0–1%",
+				at100: "€0.00–1.00 · 0–1%",
 				tone: "win" as const,
 			},
 			{
 				name: "Card (Stripe EEA)",
-				fee: "1.5% + €0.25",
+				fee: "1.5% + €0.25 — paid by the merchant",
 				at1: "€0.27 · 26.5%",
 				at2: "€0.28 · 14%",
 				at5: "€0.33 · 6.5%",
@@ -490,7 +846,7 @@ const en: typeof hr = {
 			},
 			{
 				name: "SEPA order (Croatian banks)",
-				fee: "€0.25–0.45 fixed — paid by the sender",
+				fee: "€0.25–0.45 fixed — paid by the buyer",
 				at1: "up to €0.45 · up to 45%",
 				at2: "up to €0.45 · up to 22.5%",
 				at5: "up to €0.45 · up to 9%",
@@ -501,19 +857,19 @@ const en: typeof hr = {
 		points: [
 			{
 				title: "Fixed fees kill micropayments",
-				text: "On a €2 payment the card fee is 14%, and the fixed bank order up to 22.5%. Small, frequent payments — exactly what local retail lives on — are the most expensive today. Only a transfer with no fixed component on either side makes micropayments viable.",
+				text: "On a €2 payment the card fee is 14%, and the fixed bank order up to 22.5%. Small, frequent payments — exactly what local retail lives on — are the most expensive today. Only a fee with no fixed component makes micropayments viable.",
 			},
 			{
 				title: "Money stays in the local economy",
-				text: "A percentage of every card transaction leaves the local circle for schemes and processors. On the MPT rail the full amount reaches the payee — a difference that, over thousands of transactions, accumulates into serious money that stays with the merchant and the community.",
+				text: "A percentage of every card transaction leaves the local circle for schemes and processors. On the MPT rail the full amount reaches the payee, while orchestration is billed separately and is lower than the card fee at every amount.",
 			},
 			{
-				title: "Sovereignty without intermediaries",
-				text: "The rail is built on regulated e-money (EURe, issued by the licensed EMI Monerium) in the user's self-custody. There is no intermediary between payer and payee charging a margin — the local economy gets a payment system of its own.",
+				title: "A rail they control themselves",
+				text: "The rail is built on regulated e-money (EURe, issued by the licensed EMI Monerium) on the payee's own account and Safe. There are no card schemes or processors between payer and payee, and the code is open — anyone can run their own MPT.",
 			},
 			{
 				title: "A public, verifiable trace",
-				text: "Unlike cash and card settlements, every transfer is publicly visible and auditable onchain — transparency for the buyer, the merchant and the community, without giving up self-custody.",
+				text: "Unlike cash and card settlements, every transfer is publicly visible and auditable onchain — transparency for the buyer, the merchant and the community.",
 			},
 		],
 		sourceNote:
@@ -522,24 +878,26 @@ const en: typeof hr = {
 			label: "lom.ff.hr/dokumenti/isplativost",
 			href: "https://lom.ff.hr/dokumenti/isplativost",
 		},
+		calcLink: "Run the numbers for your shop in the calculator on the pricing page",
 	},
 	savings: {
-		title: "Potential savings for Croatian retail",
-		subtitle: "An illustrative calculation — the fees intermediaries take today that don't exist on the MPT rail.",
+		title: "Calculator: what goes to intermediaries today",
+		subtitle: "An illustrative calculation for one merchant — card fees, the buyers' bank orders, and MPT at list price.",
 		txPerDay: "Transactions per day",
 		avgAmount: "Average amount (€)",
 		perTx: "Fee per transaction",
 		daily: "Daily",
 		monthly: "Monthly",
 		yearly: "Yearly",
-		vsCard: "vs. card",
-		vsSepa: "vs. SEPA order",
-		note: "Card: 1.5% + €0.25 per transaction (Stripe EEA). SEPA: fixed order €0.25–0.45 per transaction (Croatian banks, paid by the sender). Month = 30 days, year = 365.",
+		vsCard: "Card",
+		vsSepa: "SEPA order",
+		mpt: "MPT",
+		note: "Card: 1.5% + €0.25 per transaction, paid by the merchant (Stripe EEA). SEPA: fixed order €0.25–0.45 per transaction, paid by the buyer (Croatian banks). MPT: €0 up to €2,500 in monthly volume, then 1%, paid by the merchant. Month = 30 days, year = 365.",
 	},
 	sim: {
 		title: "Step-by-step simulations",
 		subtitle:
-			"The entire flow is modeled as a state machine with every node, transition and guard limit. Pick a scenario — from a buyer paying a merchant from the bank to a payment without a reference — and follow the money step by step — the diagram shows where the money is, the log shows who did what and who paid.",
+			"The entire flow is modeled as a state machine with every node, transition and guard limit. Pick a scenario — from a buyer paying a merchant from the bank to a payment without a reference — and follow the money step by step: the diagram shows where the money is, the log shows who did what and who paid.",
 		labels: {
 			pickScenario: "Scenario",
 			start: "Start",
@@ -566,26 +924,26 @@ const en: typeof hr = {
 			todayUpTo: "up to",
 		},
 		testsNote:
-			"The same state machine also powers automated tests: every scenario proves the user pays €0 and amounts are conserved 1:1 at every step.",
+			"The same state machine also powers automated tests: every scenario proves the buyer or user pays €0 and amounts are conserved 1:1 at every step.",
 	},
 	cta: {
 		title: "Want to accept payments through MPT?",
 		subtitle:
-			"Shops, associations, parishes and projects — each with its own Monerium account, while MPT runs the rest. Or run your own MPT: the code is open. The conversation happens in the open in our Telegram group, where you can reach us directly too.",
-		button: { label: "Join us: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
-		secondary: { label: "or by email: ms@mpt.hr", href: "mailto:ms@mpt.hr" },
+			"Tell us about your shop, association or project and we'll come back with an integration proposal. If you want your own MPT, we help with the setup too.",
+		community: { label: "Questions and community: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
+		github: { label: "Code on GitHub", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
 	footer: {
 		columns: [
 			{
 				title: "Product",
 				links: [
-					{ label: "How it works", href: "#how" },
-					{ label: "Money flow", href: "#flow" },
-					{ label: "Simulations", href: "#sim" },
-					{ label: "Why now", href: "#why" },
-					{ label: "Status", href: "#status" },
-					{ label: "Contact", href: "#contact" },
+					{ label: "How it works", href: "/#how" },
+					{ label: "Integration", href: "/#integrate" },
+					{ label: "Pricing", href: "/pricing" },
+					{ label: "Money flow & simulations", href: "/flow" },
+					{ label: "Why now", href: "/why" },
+					{ label: "Status", href: "/#status" },
 				],
 			},
 			{
@@ -597,10 +955,12 @@ const en: typeof hr = {
 				],
 			},
 			{
-				title: "Company",
+				title: "Contact",
 				links: [
-					{ label: "airkuna.com", href: "https://airkuna.com" },
+					{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
+					{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 					{ label: "ITalk d.o.o.", href: "https://italk.hr" },
+					{ label: "airkuna.com", href: "https://airkuna.com" },
 				],
 			},
 		],
@@ -608,14 +968,9 @@ const en: typeof hr = {
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"is a product of ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Croatia · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Commercial Court in Zagreb · director: Matija Stepanić",
-		imprintLinks: [
-			{ label: "t.me/mpt_hr", href: "https://t.me/mpt_hr" },
-			{ label: "ms@mpt.hr", href: "mailto:ms@mpt.hr" },
-			{ label: "italk.hr", href: "https://italk.hr" },
-		],
 		copyright: "MPT / ITalk d.o.o.",
 	},
-	langSwitch: { label: "HR", href: "/hr", ariaLabel: "Prebaci na hrvatski" },
+	langSwitch: { label: "HR", target: "hr", ariaLabel: "Prebaci na hrvatski" },
 };
 
 export type Dictionary = typeof hr;
@@ -624,4 +979,10 @@ const dictionaries: Record<Locale, Dictionary> = { hr, en };
 
 export function getDictionary(locale: Locale): Dictionary {
 	return dictionaries[locale];
+}
+
+/** mailto: link for the primary "request integration" CTA, with a prefilled template */
+export function requestHref(dict: Dictionary): string {
+	const { email, subject, body } = dict.request;
+	return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

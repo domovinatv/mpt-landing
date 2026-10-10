@@ -13,7 +13,6 @@ import {
 import { cardFee, SEPA_FEE_MAX, SEPA_FEE_MIN } from "@/lib/market-fees";
 import FlowDiagram, { type FlowOrientation } from "./FlowDiagram";
 import MermaidFlow from "./MermaidFlow";
-import SavingsCalculator from "./SavingsCalculator";
 
 export interface SimulationPlayerLabels {
 	pickScenario: string;
@@ -321,7 +320,6 @@ export default function SimulationPlayer({
 						</div>
 					</div>
 
-					<SavingsCalculator locale={locale} />
 				</div>
 			</div>
 		</div>

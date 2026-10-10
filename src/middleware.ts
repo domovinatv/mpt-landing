@@ -9,10 +9,11 @@ function preferredLocale(request: NextRequest) {
 
 export function middleware(request: NextRequest) {
 	const url = request.nextUrl.clone();
-	url.pathname = `/${preferredLocale(request)}`;
+	// "/" → "/hr", "/pricing" → "/hr/pricing" (locale-less links people type or share)
+	url.pathname = `/${preferredLocale(request)}${request.nextUrl.pathname === "/" ? "" : request.nextUrl.pathname}`;
 	return NextResponse.redirect(url);
 }
 
 export const config = {
-	matcher: ["/"],
+	matcher: ["/", "/flow", "/pricing", "/why"],
 };
