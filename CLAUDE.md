@@ -26,6 +26,7 @@ ali na `/flow` i `/why`, ne na naslovnici.
 | Ruta | Sadržaj |
 |---|---|
 | `/{hr,en}` | hero · Kako radi (RC tablica) · Integracija u 3 koraka + kod · Za koga · cijene teaser · Što MPT jest/nije · `#status` · CTA |
+| `/{hr,en}/merchants` | za trgovce: onboarding (4 koraka) · „što se dogodi kad…“ (10 rubnih slučajeva s webhookom) · novac/povrati/knjiženje · što još nema |
 | `/{hr,en}/flow` | tok novca (4 koraka + napomene) + dijagram i simulacije |
 | `/{hr,en}/pricing` | 3 plana · kalkulator (`SavingsCalculator`) · FAQ |
 | `/{hr,en}/why` | tablica naknada po kanalu · argumenti · izvor |
@@ -35,7 +36,7 @@ Zajednički dijelovi (nav, footer, CTA traka, `pageMetadata`, `localHref`) su u
 `src/components/site.tsx`; interni hrefovi u dictionaries su bez locale prefiksa
 (`/pricing`, `/#how`). Nova stranica = `pagePaths` + `dict.pages.<key>` + middleware
 matcher (preusmjerenje rute bez jezika). `sitemap.ts` i hreflang (s `x-default`) se
-izvode iz `pagePaths`. OG slika je statični `public/og.png` (izvor: SVG renderiran
+izvode iz `pagePaths`; `robots.ts` upućuje na sitemap. OG slika je statični `public/og.png` (izvor: SVG renderiran
 `rsvg-convert`, 1200×630).
 Iskreno o stanju: multi-tenant rail (ADR 0017) je u produkcijskom kodu ali isključen
 (`MULTI_TENANT_RAIL=0`) dok prvi vanjski tenant ne završi KYB — ITalk je jedini aktivni
@@ -67,7 +68,9 @@ Invarijante koje testovi dokazuju: korisnik plaća 0 € u svakom koraku; iznosi
 pomicanja novca; scenariji su subsetovi punog grafa (`scenarioSubset()`).
 
 Scenarij 1 (zadani) je `sepa-checkout` (kupac → trgovac iz banke), 2 je `stray` (uplata
-bez reference, ADR 0018). Test provjerava da je merchant tok prvi.
+bez reference, ADR 0018), 3 `parked` (resolver ne nađe kandidata → parkirano, operater
+preusmjeri), 4 `underpaid` (novac stigne, intent ne postaje paid). Test provjerava da je
+merchant tok prvi.
 
 Graf je **zatvoreni krug**: jedan čvor `bank` je i početak i kraj (bilo koja banka s
 IBAN-om u eurozoni; prikazujemo hrvatske). Povratne veze: off-ramp preko vlastitog
@@ -98,6 +101,13 @@ Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
   first-iban-screening.md`): „zaprimljeno" 0 s od placedAt (~5 s od „Pošalji"), ~12 s do
   `paid`, Monerium placed→processed medijan 9 s / p95 26 s; prva uplata s novog IBAN-a
   ručni pregled minute–sati
+- ograničenje primatelja: landing tvrdi samo „rola smije samo EURe.transfer“ + fail-closed
+  provjera u kodu, **ne** „onchain ograničeno na adrese trgovca“ — prije nego to napišeš,
+  provjeri status ADR 0016 u pay.domovina.ai
+- dvostruka uplata s istom referencom se ponovno forwarda (samo `payment.received`) — ne
+  pisati „intent se ne može platiti dvaput“
+- gas za routere hostanih tenanata puni MPT (Matija, 10. 10. 2026.) — „gas plaća MPT“ vrijedi
+- Moneriumova suglasnost za javni opis integracije (API ToS §4) nije potrebna (Matija)
 - ne objavljivati javno sigurnosne rupe iz reviewa (npr. Roles scoping, WAF) — `#status`
   navodi samo ono što je riješeno, plan i ograničenja za korisnika
 - punjenje GP kartice = **EURe transfer s korisnikove adrese** (ne top-up iz Revoluta);

@@ -30,7 +30,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 		<PageShell locale={locale} page="home">
 			<Hero dict={dict} locale={locale} />
 			<How dict={dict} />
-			<Integrate dict={dict} />
+			<Integrate dict={dict} locale={locale} />
 			<Audiences dict={dict} />
 			<PricingTeaser dict={dict} locale={locale} />
 			<Trust dict={dict} />
@@ -178,7 +178,7 @@ webhook-signature: v1,…
   "currency": "EUR"
 }`;
 
-function Integrate({ dict }: { dict: Dictionary }) {
+function Integrate({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 	const { integrate } = dict;
 	return (
 		<section id="integrate" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
@@ -216,6 +216,11 @@ function Integrate({ dict }: { dict: Dictionary }) {
 				<a href={requestHref(dict)} className={textLinkCls}>
 					{integrate.cta}
 				</a>
+			</p>
+			<p className="mt-3 text-center text-sm">
+				<Link href={`/${locale}/merchants`} className={textLinkCls}>
+					{integrate.casesLink}
+				</Link>
 			</p>
 		</section>
 	);

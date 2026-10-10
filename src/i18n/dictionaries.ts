@@ -24,6 +24,11 @@ const hr = {
 			description:
 				"Kao RevenueCat: hostani MPT je besplatan do 2.500 € mjesečnog prometa, zatim 1%. Bez fiksne naknade po transakciji. Vlastiti MPT je besplatan (MIT). Kupac ne plaća ništa.",
 		},
+		merchants: {
+			title: "Za trgovce — MPT",
+			description:
+				"Što trgovac treba za MPT, kako teče onboarding i što se točno dogodi kad uplata ne ide po planu: bez reference, manja, veća, dvostruka, zakašnjela ili odbijena uplata. Plus povrati, eure na računu i knjiženje.",
+		},
 		why: {
 			title: "Zašto danas — MPT",
 			description:
@@ -32,6 +37,7 @@ const hr = {
 	},
 	nav: {
 		how: "Kako radi",
+		merchants: "Za trgovce",
 		flow: "Tok novca",
 		pricing: "Cijene",
 		why: "Zašto danas",
@@ -55,13 +61,13 @@ const hr = {
 		ctaSecondary: "Pogledaj tok novca",
 		cardLabel: "Izmjereno u produkciji · listopad 2026.",
 		cardTotal: "~12 s",
-		cardTotalNote: "od uplate u banci do statusa „paid“ kod trgovca",
+		cardTotalNote: "od uplate u banci do statusa „paid“ kod trgovca (kupac koji je već plaćao s istog IBAN-a)",
 		cardRows: [
 			{ label: "Kupac vidi „zaprimljeno“", value: "~5 s" },
 			{ label: "Naknada kupca (SEPA Instant iz Revoluta)", value: "0,00 €" },
 			{ label: "Tko drži novac", value: "trgovac" },
 		],
-		cardFootnote: "Prvi tenant u produkciji: ITalk d.o.o. Drugi trgovci uključuju se nakon KYB-a.",
+		cardFootnote: "Prvu uplatu s novog IBAN-a Monerium ručno pregleda — od nekoliko minuta do nekoliko sati. Prvi tenant u produkciji: ITalk d.o.o.; drugi trgovci uključuju se nakon KYB-a.",
 	},
 	how: {
 		title: "Orkestrator, ne posrednik",
@@ -86,7 +92,7 @@ const hr = {
 		cards: [
 			{
 				title: "Vlastiti Monerium račun po trgovcu",
-				text: "Svaki tenant ima vlastiti KYB, IBAN, Safe (2/3 multisig) i listu odobrenih adresa. Novac koji je sletio na IBAN trgovca X može završiti samo na adresama trgovca X — to se provodi u kodu i onchain (Zodiac Roles).",
+				text: "Svaki tenant ima vlastiti KYB, IBAN, Safe (2/3 multisig) i listu odobrenih adresa. Novac koji je sletio na IBAN trgovca X može završiti samo na adresama trgovca X — provjera je fail-closed, a forward ide kroz Zodiac Roles rolu koja smije samo EURe.transfer.",
 			},
 			{
 				title: "Jedna integracija, ista poslovna logika",
@@ -94,7 +100,7 @@ const hr = {
 			},
 			{
 				title: "Otporno na stvarne uplate",
-				text: "Uplata bez reference povezuje se s intentom po iznosu i vremenu, manja uplata nikad nije „paid“, a svaki forward koji ne prođe završava kao alarm — nikad tiho. Isti intent ne može se platiti dvaput.",
+				text: "Uplata bez reference povezuje se s intentom po iznosu i vremenu, manja uplata nikad nije „paid“, a svaki forward koji ne prođe završava kao alarm — nikad tiho. Intent se plaćenim označi samo jednom; svaka dodatna uplata svejedno stiže trgovcu i javlja se webhookom.",
 			},
 			{
 				title: "Otvoreni kod — imaj svoj MPT",
@@ -120,7 +126,7 @@ const hr = {
 			{
 				num: "03",
 				title: "Primi webhook",
-				text: "intent.paid stiže kad je forward potvrđen onchain, ~12 s od uplate. Postoje i payment.received, payment.underpaid, payment.rejected i payment.late.",
+				text: "intent.paid stiže kad je forward potvrđen onchain, ~12 s od uplate. Postoje i payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked i contribution.sepa.",
 			},
 		],
 		requestTitle: "Zahtjev",
@@ -128,6 +134,7 @@ const hr = {
 		orderLabel: "Narudžba #1042",
 		note: "Primjer je skraćen; adrese i ključevi su ilustrativni.",
 		cta: "Javi se za integraciju i consulting",
+		casesLink: "Što se dogodi kad uplata ne ide po planu →",
 	},
 	audiences: {
 		title: "Za koga je MPT",
@@ -135,7 +142,7 @@ const hr = {
 		items: [
 			{
 				title: "Web trgovine",
-				text: "Checkout s EPC QR kodom preko API-ja ili kao način plaćanja u trgovini. Shopify je spojen i čeka prvi test na stvarnoj trgovini; WooCommerce je u planu.",
+				text: "Checkout s EPC QR kodom preko API-ja ili kao način plaćanja u trgovini. Shopify aplikacija je napisana i čeka puštanje i prvi test na stvarnoj trgovini; WooCommerce je u planu.",
 			},
 			{
 				title: "Udruge, župe i projekti",
@@ -166,7 +173,7 @@ const hr = {
 			},
 			{
 				title: "Novac je trgovčev",
-				text: "IBAN i Safe pripadaju trgovcu. MPT smije samo proslijediti EURe na adrese koje je trgovac odobrio — onchain ograničeno Zodiac Rolesom.",
+				text: "IBAN i Safe pripadaju trgovcu. MPT smije samo proslijediti EURe na adrese koje je trgovac odobrio, i to kroz Zodiac Roles rolu koja ne može ništa osim EURe transfera.",
 			},
 			{
 				title: "Provjerljivo",
@@ -226,7 +233,7 @@ const hr = {
 			items: [
 				"Checkout intenti s EPC QR kodom — do 10.000 € po intentu, valjanost zadano 15 min, najviše 24 h",
 				"„Zaprimljeno“ odmah i status uživo preko SSE-a (od 5. 10. 2026.)",
-				"Potpisani webhookovi za trgovce (received · paid · underpaid · rejected · late) s trajnim outboxom",
+				"Potpisani webhookovi za trgovce (received · paid · underpaid · late · rejected · blocked · kampanje) s trajnim outboxom",
 				"Uplate bez reference: automatsko povezivanje s intentom (od 8. 10. 2026.)",
 				"Isplata samo na odobrene adrese tenanta — fail-closed (od 1. 8. 2026.)",
 				"Nadzor Safea: alarm za svaki izlaz koji nije MPT-ov forward",
@@ -236,8 +243,8 @@ const hr = {
 		prep: {
 			title: "U pripremi",
 			items: [
-				"Drugi tenanti s vlastitim Monerium računom — kod je u produkciji, uključuje se s prvim trgovcem koji završi KYB",
-				"Shopify: MPT kao način plaćanja s QR kodom — kod spojen, prvi test na stvarnoj trgovini predstoji",
+				"Drugi tenanti s vlastitim Monerium računom — multi-tenant rail radi (testni sandbox tenant spojen 9. 10. 2026.), u produkciji se uključuje s prvim trgovcem koji završi KYB",
+				"Shopify: MPT kao način plaćanja s QR kodom — aplikacija napisana, puštanje i prvi test na stvarnoj trgovini predstoje",
 				"WooCommerce — plan",
 				"Javna dokumentacija API-ja",
 				"Gnosis Pay VISA grana — pre-pilot",
@@ -329,6 +336,129 @@ const hr = {
 				q: "Mogu li kasnije prijeći na vlastiti MPT?",
 				a: "Da. IBAN i Safe su tvoji od prvog dana; vlastita instanca samo preuzima orkestraciju.",
 			},
+		],
+	},
+	merchants: {
+		eyebrow: "Za trgovce",
+		title: "Što se dogodi kad…",
+		subtitle:
+			"Sve što trgovac pita prije integracije: što ti treba, kako teče onboarding i što MPT napravi u svakom slučaju koji nije savršena uplata. Ponašanje opisano ovdje je ono što kod danas radi, ne plan.",
+		onboardingTitle: "Onboarding",
+		onboardingSubtitle:
+			"Trajanje najviše ovisi o Moneriumovom KYB-u. Tehnički dio radimo zajedno, a gas za forward MPT plaća i puni sam — o tome ne brineš.",
+		onboarding: [
+			{
+				num: "01",
+				title: "Monerium račun",
+				text: "Otvaraš poslovni račun kod Moneriuma i prolaziš njihov KYB. Dobivaš vlastiti IBAN; ugovor je između tebe i Moneriuma.",
+			},
+			{
+				num: "02",
+				title: "Safe i odobrene adrese",
+				text: "Tvoj Safe (2 od 3 potpisa) prima EURe s tvog IBAN-a. Popisuješ adrese na koje MPT smije proslijediti novac — samo tvoje.",
+			},
+			{
+				num: "03",
+				title: "Jedan potpis",
+				text: "Potpisuješ jednu transakciju na Safeu koja MPT-u daje rolu: smije samo EURe transfer, samo na tvoje adrese, do dogovorenog limita. Možeš je opozvati kad želiš.",
+			},
+			{
+				num: "04",
+				title: "Ključ, webhook i probna uplata",
+				text: "Dobivaš API ključ, upisuješ URL za webhookove, i prolazimo probnu uplatu od kraja do kraja. Tek tada se uključuješ u produkciju.",
+			},
+		],
+		casesTitle: "Uplate koje ne idu po planu",
+		casesSubtitle:
+			"Novac se ne pogađa i ne gubi: ili stigne na tvoju adresu, ili ostane na tvom Safeu dok se ne riješi. Svaki ishod javlja se webhookom.",
+		casesHead: { when: "Kad…", what: "MPT napravi", event: "Webhook" },
+		cases: [
+			{
+				when: "Kupac plati točan iznos",
+				what: "„Zaprimljeno“ na checkoutu ~5 s nakon što kupac pošalje uplatu, forward na tvoju adresu i status „paid“ ~12 s od uplate.",
+				event: "payment.received → intent.paid",
+			},
+			{
+				when: "Kupac prvi put plaća s tog IBAN-a",
+				what: "Monerium prvu uplatu s novog IBAN-a ručno pregleda — od nekoliko minuta do nekoliko sati. API to unaprijed označi, pa checkout može kupcu reći da će potrajati. Sljedeće uplate s istog IBAN-a prolaze za sekunde.",
+				event: "payment.received → intent.paid",
+			},
+			{
+				when: "Referenca se izgubi",
+				what: "Resolver traži tvoj otvoreni intent s točno tim iznosom u vremenskom prozoru oko uplate. Jednoznačan kandidat → normalan forward i „paid“. Nema kandidata ili su različiti → novac ostaje na tvom Safeu i operater ga ručno preusmjeri.",
+				event: "intent.paid ili forward.blocked",
+			},
+			{
+				when: "Kupac uplati manje",
+				what: "Novac stigne na tvoju adresu, ali intent ne postaje „paid“. Uplate se ne zbrajaju — o narudžbi (dopuna, povrat, otkaz) odlučuješ ti.",
+				event: "payment.underpaid",
+			},
+			{
+				when: "Kupac uplati više",
+				what: "Intent postaje „paid“, cijeli iznos stigne na tvoju adresu, a webhook nosi koliko je preplaćeno. Razliku kupcu vraćaš ti.",
+				event: "intent.paid (overpaid_cents)",
+			},
+			{
+				when: "Kupac plati dvaput",
+				what: "Intent je plaćen samo jednom; druga uplata svejedno stigne na tvoju adresu i javi se zasebno. Povrat radiš ti.",
+				event: "payment.received",
+			},
+			{
+				when: "Uplata stigne nakon isteka",
+				what: "Novac stigne na tvoju adresu, intent ostaje istekao, a ti dobiješ zaseban događaj pa odlučuješ hoćeš li narudžbu ipak isporučiti.",
+				event: "payment.late",
+			},
+			{
+				when: "Monerium odbije uplatu",
+				what: "Novac se ne minta i vraća se platitelju. Webhook nosi Moneriumov razlog.",
+				event: "payment.rejected",
+			},
+			{
+				when: "Uplata nije u eurima",
+				what: "MPT radi samo s EUR. Uplata u drugoj valuti se ne prosljeđuje automatski nego ostaje na Safeu za ručno rješavanje.",
+				event: "forward.blocked",
+			},
+			{
+				when: "MPT ne radi",
+				what: "Uplate i dalje stižu na tvoj IBAN i Safe — MPT ih ne može zaključati. Monerium ponavlja svoje obavijesti do 12 h, MPT naknadno povlači propuštene narudžbe, a webhookove prema tebi ponavlja do ~47 h.",
+				event: "isporuka kasni, ne gubi se",
+			},
+		],
+		moneyTitle: "Novac, povrati i knjiženje",
+		money: [
+			{
+				title: "Kako dobiješ eure na račun",
+				text: "Na tvoju adresu stiže EURe — regulirani e-novac, 1:1 s eurom. U eure na poslovnom računu pretvaraš ga preko svog Monerium računa (redeem → SEPA na tvoj IBAN), kad i koliko želiš. MPT to ne radi umjesto tebe; Moneriumove naknade, ako ih tvoj ugovor predviđa, nisu dio MPT cijene.",
+			},
+			{
+				title: "Povrat kupcu",
+				text: "Povrate radiš ti, s vlastitog računa — webhook ti daje ime i IBAN platitelja. MPT danas nema API za povrate.",
+			},
+			{
+				title: "Nema chargebacka kao kod kartice",
+				text: "SEPA uplata nije kartična transakcija: kupac je ne može jednostrano osporiti preko kartične sheme. Banka može zatražiti povrat (SEPA recall) — takav zahtjev rješavamo s tobom, ručno.",
+			},
+			{
+				title: "Knjiženje i porezi",
+				text: "Za svaku uplatu imaš webhook s iznosom, vremenom, imenom i IBAN-om platitelja, a svaki forward ima javni onchain trag. MPT ne izdaje račune i ne fiskalizira. Kako knjižiti e-novac i vrijedi li za tebe fiskalizacija, provjeri sa svojim računovođom.",
+			},
+			{
+				title: "Podaci tvojih kupaca",
+				text: "Webhook nosi ime i IBAN platitelja — to su osobni podaci tvojih kupaca. Kako ih obrađujemo, dio je ugovora o integraciji.",
+			},
+			{
+				title: "Gas i limiti",
+				text: "Gas za svaki forward plaća MPT. Najviše 10.000 € po intentu; veći limiti po dogovoru (Enterprise).",
+			},
+		],
+		missingTitle: "Što još nema",
+		missingSubtitle: "Da ne bude iznenađenja nakon potpisa.",
+		missing: [
+			"Sučelje (dashboard) za trgovca — danas vidiš uplate preko webhookova i onchain",
+			"API za povrate — povrate radiš sam",
+			"Checkout stranica samo na hrvatskom",
+			"Javna API dokumentacija i SDK — integraciju radimo zajedno",
+			"WooCommerce dodatak; Shopify aplikacija čeka puštanje",
 		],
 	},
 	why: {
@@ -448,6 +578,7 @@ const hr = {
 		title: "Želiš primati uplate preko MPT-a?",
 		subtitle:
 			"Opiši nam svoju trgovinu, udrugu ili projekt i javimo se s prijedlogom integracije. Ako želiš vlastiti MPT, pomažemo i s postavljanjem.",
+		emailLead: "ili izravno na",
 		community: { label: "Pitanja i zajednica: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		github: { label: "Kod na GitHubu", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
@@ -458,6 +589,7 @@ const hr = {
 				links: [
 					{ label: "Kako radi", href: "/#how" },
 					{ label: "Integracija", href: "/#integrate" },
+					{ label: "Za trgovce", href: "/merchants" },
 					{ label: "Cijene", href: "/pricing" },
 					{ label: "Tok novca i simulacije", href: "/flow" },
 					{ label: "Zašto danas", href: "/why" },
@@ -508,6 +640,11 @@ const en: typeof hr = {
 			description:
 				"Like RevenueCat: hosted MPT is free up to €2,500 in monthly volume, then 1%. No fixed fee per transaction. Self-hosted MPT is free (MIT). The buyer pays nothing.",
 		},
+		merchants: {
+			title: "For merchants — MPT",
+			description:
+				"What a merchant needs for MPT, how onboarding works and exactly what happens when a payment doesn't go to plan: no reference, too little, too much, twice, late or rejected. Plus refunds, euros in your account and bookkeeping.",
+		},
 		why: {
 			title: "Why now — MPT",
 			description:
@@ -516,6 +653,7 @@ const en: typeof hr = {
 	},
 	nav: {
 		how: "How it works",
+		merchants: "For merchants",
 		flow: "Money flow",
 		pricing: "Pricing",
 		why: "Why now",
@@ -539,13 +677,13 @@ const en: typeof hr = {
 		ctaSecondary: "See the money flow",
 		cardLabel: "Measured in production · October 2026",
 		cardTotal: "~12 s",
-		cardTotalNote: "from the bank payment to “paid” at the merchant",
+		cardTotalNote: "from the bank payment to “paid” at the merchant (a buyer who has paid from the same IBAN before)",
 		cardRows: [
 			{ label: "Buyer sees “received”", value: "~5 s" },
 			{ label: "Buyer's fee (SEPA Instant from Revolut)", value: "€0.00" },
 			{ label: "Who holds the money", value: "the merchant" },
 		],
-		cardFootnote: "First tenant in production: ITalk d.o.o. Further merchants switch on after KYB.",
+		cardFootnote: "Monerium reviews the first payment from a new IBAN by hand — from a few minutes to a few hours. First tenant in production: ITalk d.o.o.; further merchants switch on after KYB.",
 	},
 	how: {
 		title: "An orchestrator, not an intermediary",
@@ -570,7 +708,7 @@ const en: typeof hr = {
 		cards: [
 			{
 				title: "An own Monerium account per merchant",
-				text: "Every tenant has its own KYB, IBAN, Safe (a 2/3 multisig) and list of approved addresses. Money that lands on merchant X's IBAN can only end up at merchant X's addresses — enforced in code and onchain (Zodiac Roles).",
+				text: "Every tenant has its own KYB, IBAN, Safe (a 2/3 multisig) and list of approved addresses. Money that lands on merchant X's IBAN can only end up at merchant X's addresses — the check is fail-closed, and the forward goes through a Zodiac Roles role that may only call EURe.transfer.",
 			},
 			{
 				title: "One integration, the same business logic",
@@ -578,7 +716,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "Built for real-world payments",
-				text: "A payment without a reference is matched to an intent by amount and time, an underpayment never becomes “paid”, and every forward that fails ends up as an alert — never silently. The same intent cannot be paid twice.",
+				text: "A payment without a reference is matched to an intent by amount and time, an underpayment never becomes “paid”, and every forward that fails ends up as an alert — never silently. An intent is marked paid only once; any extra payment still reaches the merchant and is reported by webhook.",
 			},
 			{
 				title: "Open source — run your own MPT",
@@ -604,7 +742,7 @@ const en: typeof hr = {
 			{
 				num: "03",
 				title: "Receive the webhook",
-				text: "intent.paid arrives once the forward is confirmed onchain, ~12 s after the payment. There are also payment.received, payment.underpaid, payment.rejected and payment.late.",
+				text: "intent.paid arrives once the forward is confirmed onchain, ~12 s after the payment. There are also payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked and contribution.sepa.",
 			},
 		],
 		requestTitle: "Request",
@@ -612,6 +750,7 @@ const en: typeof hr = {
 		orderLabel: "Order #1042",
 		note: "The example is shortened; addresses and keys are illustrative.",
 		cta: "Get in touch for integration and consulting",
+		casesLink: "What happens when a payment doesn't go to plan →",
 	},
 	audiences: {
 		title: "Who MPT is for",
@@ -619,7 +758,7 @@ const en: typeof hr = {
 		items: [
 			{
 				title: "Online shops",
-				text: "A checkout with an EPC QR code through the API or as a payment method in the shop. Shopify is merged and awaiting its first test on a real store; WooCommerce is planned.",
+				text: "A checkout with an EPC QR code through the API or as a payment method in the shop. The Shopify app is written and awaiting release and its first test on a real store; WooCommerce is planned.",
 			},
 			{
 				title: "Associations, parishes and projects",
@@ -650,7 +789,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "The money is the merchant's",
-				text: "The IBAN and Safe belong to the merchant. MPT may only forward EURe to addresses the merchant has approved — restricted onchain by Zodiac Roles.",
+				text: "The IBAN and Safe belong to the merchant. MPT may only forward EURe to addresses the merchant has approved, through a Zodiac Roles role that can do nothing but an EURe transfer.",
 			},
 			{
 				title: "Verifiable",
@@ -710,7 +849,7 @@ const en: typeof hr = {
 			items: [
 				"Checkout intents with an EPC QR code — up to €10,000 per intent, valid 15 min by default, 24 h at most",
 				"“Received” right away and live status over SSE (since 5 Oct 2026)",
-				"Signed merchant webhooks (received · paid · underpaid · rejected · late) with a durable outbox",
+				"Signed merchant webhooks (received · paid · underpaid · late · rejected · blocked · campaigns) with a durable outbox",
 				"Payments without a reference: automatic matching to an intent (since 8 Oct 2026)",
 				"Payouts only to the tenant's approved addresses — fail-closed (since 1 Aug 2026)",
 				"Safe monitoring: an alert for every outflow that isn't an MPT forward",
@@ -720,8 +859,8 @@ const en: typeof hr = {
 		prep: {
 			title: "In preparation",
 			items: [
-				"Further tenants with their own Monerium account — the code is in production and switches on with the first merchant to complete KYB",
-				"Shopify: MPT as a payment method with a QR code — code merged, the first test on a real store is upcoming",
+				"Further tenants with their own Monerium account — the multi-tenant rail works (a sandbox test tenant was connected on 9 Oct 2026) and goes live with the first merchant to complete KYB",
+				"Shopify: MPT as a payment method with a QR code — the app is written, release and the first test on a real store are upcoming",
 				"WooCommerce — planned",
 				"Public API documentation",
 				"Gnosis Pay VISA branch — pre-pilot",
@@ -813,6 +952,129 @@ const en: typeof hr = {
 				q: "Can I move to a self-hosted MPT later?",
 				a: "Yes. The IBAN and the Safe are yours from day one; your own instance simply takes over the orchestration.",
 			},
+		],
+	},
+	merchants: {
+		eyebrow: "For merchants",
+		title: "What happens when…",
+		subtitle:
+			"Everything a merchant asks before integrating: what you need, how onboarding works and what MPT does in every case that isn't a perfect payment. The behaviour described here is what the code does today, not a plan.",
+		onboardingTitle: "Onboarding",
+		onboardingSubtitle:
+			"How long it takes depends mostly on Monerium's KYB. We do the technical part together, and MPT pays and tops up the gas for forwards itself — you don't have to think about it.",
+		onboarding: [
+			{
+				num: "01",
+				title: "A Monerium account",
+				text: "You open a business account with Monerium and go through their KYB. You get your own IBAN; the contract is between you and Monerium.",
+			},
+			{
+				num: "02",
+				title: "A Safe and approved addresses",
+				text: "Your Safe (2 of 3 signatures) receives the EURe from your IBAN. You list the addresses MPT may forward money to — yours only.",
+			},
+			{
+				num: "03",
+				title: "One signature",
+				text: "You sign one transaction on the Safe that gives MPT a role: an EURe transfer only, to your addresses only, up to an agreed limit. You can revoke it whenever you want.",
+			},
+			{
+				num: "04",
+				title: "Key, webhook and a test payment",
+				text: "You get an API key, enter your webhook URL, and we run a test payment end to end. Only then do you go live.",
+			},
+		],
+		casesTitle: "Payments that don't go to plan",
+		casesSubtitle:
+			"Money is never guessed and never lost: it either reaches your address or stays in your Safe until it's resolved. Every outcome is reported by webhook.",
+		casesHead: { when: "When…", what: "MPT does", event: "Webhook" },
+		cases: [
+			{
+				when: "The buyer pays the exact amount",
+				what: "“Received” on the checkout ~5 s after the buyer sends the payment, a forward to your address and “paid” ~12 s after the payment.",
+				event: "payment.received → intent.paid",
+			},
+			{
+				when: "The buyer pays from that IBAN for the first time",
+				what: "Monerium reviews the first payment from a new IBAN by hand — from a few minutes to a few hours. The API flags this in advance, so the checkout can tell the buyer it will take a while. Later payments from the same IBAN clear in seconds.",
+				event: "payment.received → intent.paid",
+			},
+			{
+				when: "The reference gets lost",
+				what: "The resolver looks for your open intent with exactly that amount in a time window around the payment. One clear candidate → a normal forward and “paid”. No candidate or conflicting ones → the money stays in your Safe and an operator reroutes it by hand.",
+				event: "intent.paid or forward.blocked",
+			},
+			{
+				when: "The buyer pays too little",
+				what: "The money reaches your address, but the intent does not become “paid”. Payments are not added up — you decide what happens to the order (top-up, refund, cancellation).",
+				event: "payment.underpaid",
+			},
+			{
+				when: "The buyer pays too much",
+				what: "The intent becomes “paid”, the full amount reaches your address, and the webhook says how much was overpaid. You refund the difference.",
+				event: "intent.paid (overpaid_cents)",
+			},
+			{
+				when: "The buyer pays twice",
+				what: "The intent is paid only once; the second payment still reaches your address and is reported separately. You handle the refund.",
+				event: "payment.received",
+			},
+			{
+				when: "The payment arrives after expiry",
+				what: "The money reaches your address, the intent stays expired, and you get a separate event so you can decide whether to ship the order anyway.",
+				event: "payment.late",
+			},
+			{
+				when: "Monerium rejects the payment",
+				what: "Nothing is minted and the money goes back to the payer. The webhook carries Monerium's reason.",
+				event: "payment.rejected",
+			},
+			{
+				when: "The payment isn't in euros",
+				what: "MPT works with EUR only. A payment in another currency is not forwarded automatically; it stays in the Safe to be resolved by hand.",
+				event: "forward.blocked",
+			},
+			{
+				when: "MPT is down",
+				what: "Payments keep landing on your IBAN and Safe — MPT cannot lock them. Monerium retries its notifications for up to 12 h, MPT pulls missed orders afterwards, and it retries webhooks to you for up to ~47 h.",
+				event: "delivery is late, never lost",
+			},
+		],
+		moneyTitle: "Money, refunds and bookkeeping",
+		money: [
+			{
+				title: "How you get euros into your account",
+				text: "Your address receives EURe — regulated e-money, 1:1 with the euro. You turn it into euros on your business account through your own Monerium account (redeem → SEPA to your IBAN), whenever and as much as you like. MPT doesn't do this for you; Monerium's fees, if your contract has any, are not part of MPT's price.",
+			},
+			{
+				title: "Refunding a buyer",
+				text: "You make refunds yourself, from your own account — the webhook gives you the payer's name and IBAN. MPT has no refund API today.",
+			},
+			{
+				title: "No chargebacks like with cards",
+				text: "A SEPA payment is not a card transaction: the buyer cannot dispute it unilaterally through a card scheme. A bank can request a return (SEPA recall) — we handle such a request with you, by hand.",
+			},
+			{
+				title: "Bookkeeping and tax",
+				text: "For every payment you have a webhook with the amount, time, and the payer's name and IBAN, and every forward leaves a public onchain trail. MPT doesn't issue invoices or handle fiscalisation. Check with your accountant how to book e-money and whether fiscalisation applies to you.",
+			},
+			{
+				title: "Your buyers' data",
+				text: "The webhook carries the payer's name and IBAN — personal data of your buyers. How we process it is part of the integration contract.",
+			},
+			{
+				title: "Gas and limits",
+				text: "MPT pays the gas for every forward. At most €10,000 per intent; higher limits by agreement (Enterprise).",
+			},
+		],
+		missingTitle: "What isn't there yet",
+		missingSubtitle: "So there are no surprises after signing.",
+		missing: [
+			"A merchant dashboard — today you see payments through webhooks and onchain",
+			"A refund API — you make refunds yourself",
+			"The checkout page is in Croatian only",
+			"Public API documentation and an SDK — we do the integration together",
+			"A WooCommerce plugin; the Shopify app is awaiting release",
 		],
 	},
 	why: {
@@ -932,6 +1194,7 @@ const en: typeof hr = {
 		title: "Want to accept payments through MPT?",
 		subtitle:
 			"Tell us about your shop, association or project and we'll come back with an integration proposal. If you want your own MPT, we help with the setup too.",
+		emailLead: "or write directly to",
 		community: { label: "Questions and community: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		github: { label: "Code on GitHub", href: "https://github.com/domovinatv/pay.domovina.ai" },
 	},
@@ -942,6 +1205,7 @@ const en: typeof hr = {
 				links: [
 					{ label: "How it works", href: "/#how" },
 					{ label: "Integration", href: "/#integrate" },
+					{ label: "For merchants", href: "/merchants" },
 					{ label: "Pricing", href: "/pricing" },
 					{ label: "Money flow & simulations", href: "/flow" },
 					{ label: "Why now", href: "/why" },

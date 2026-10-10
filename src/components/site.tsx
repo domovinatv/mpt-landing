@@ -24,6 +24,7 @@ export type PageKey = keyof Dictionary["pages"];
 /** site-relative path of each page, without the locale prefix */
 export const pagePaths: Record<PageKey, string> = {
 	home: "",
+	merchants: "/merchants",
 	flow: "/flow",
 	pricing: "/pricing",
 	why: "/why",
@@ -94,6 +95,7 @@ function BackgroundGlow() {
 function Nav({ dict, locale, page }: { dict: Dictionary; locale: Locale; page: PageKey }) {
 	const links: { key: Exclude<keyof Dictionary["nav"], "cta" | "menu">; href: string; page?: PageKey }[] = [
 		{ key: "how", href: "/#how" },
+		{ key: "merchants", href: "/merchants", page: "merchants" },
 		{ key: "flow", href: "/flow", page: "flow" },
 		{ key: "pricing", href: "/pricing", page: "pricing" },
 		{ key: "why", href: "/why", page: "why" },
@@ -226,6 +228,16 @@ export function Cta({ dict }: { dict: Dictionary }) {
 				<a href={requestHref(dict)} className={`mt-8 px-7 ${goldButtonCls}`}>
 					{dict.request.label}
 				</a>
+				{/* mailto does nothing without a mail client, so the address is spelled out */}
+				<p className="mt-4 text-sm text-[#C9D6EC]">
+					{dict.cta.emailLead}{" "}
+					<a
+						href={`mailto:${dict.request.email}`}
+						className="font-semibold text-white underline decoration-[#3f5a86] underline-offset-4"
+					>
+						{dict.request.email}
+					</a>
+				</p>
 				<p className="mt-5 text-sm text-[#8FA6C9]">
 					{[dict.cta.community, dict.cta.github].map((link, i) => (
 						<span key={link.href}>

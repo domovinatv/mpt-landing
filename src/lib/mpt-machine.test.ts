@@ -140,6 +140,27 @@ describe("terminal states", () => {
 		expect(ids.indexOf("strayResolve")).toBeLessThan(ids.indexOf("forwardToPayee"));
 	});
 
+	it("a payment no intent matches is parked in the Safe, never guessed, then rerouted by the operator", () => {
+		const steps = simulate(scenarios.find((s) => s.id === "parked")!);
+		const ids = steps.map((s) => s.transition.id);
+		expect(ids).not.toContain("strayResolve");
+		expect(ids).not.toContain("checkoutReceived");
+		const parked = steps.find((s) => s.transition.id === "strayPark")!;
+		expect(parked.location).toBe("safeRelayer");
+		expect(parked.balances.merchant).toBe(0);
+		const last = steps.at(-1)!;
+		expect(last.transition.id).toBe("operatorReroute");
+		expect(last.balances.merchant).toBe(20);
+	});
+
+	it("a short payment still reaches the merchant, then fires payment.underpaid", () => {
+		const steps = simulate(scenarios.find((s) => s.id === "underpaid")!);
+		const last = steps.at(-1)!;
+		expect(last.transition.id).toBe("underpaidNotice");
+		expect(last.balances.merchant).toBe(20);
+		expect(steps.every((s) => s.status === "ok")).toBe(true);
+	});
+
 	it("the merchant flow is the default (first) scenario", () => {
 		expect(scenarios[0].id).toBe("sepa-checkout");
 	});

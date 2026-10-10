@@ -59,12 +59,15 @@ stateDiagram-v2
     FUNDS_AT_REVOLUT --> FUNDS_AT_REVOLUT : revolutInternalCheck
     FUNDS_AT_REVOLUT --> FUNDS_AT_MONERIUM_MPT : sepaToMonerium (min 1 € Revolut, referenca mpt#colon;0x…?sid=…)
     FUNDS_AT_MONERIUM_MPT --> FUNDS_AT_MONERIUM_MPT : moneriumVerify (issue order placed → pending → processed)
-    FUNDS_AT_MONERIUM_MPT --> EURE_AT_MAIN_RAIL_SAFE : mintEure (1:1, na default wallet)
-    EURE_AT_MAIN_RAIL_SAFE --> EURE_AT_USER_ADDRESS : relaySponsoredTx (Zodiac Roles, router EOA plaća gas)
+    FUNDS_AT_MONERIUM_MPT --> EURE_AT_TENANT_SAFE : mintEure (1:1, na default wallet = Safe tenanta)
+    EURE_AT_TENANT_SAFE --> EURE_AT_USER_ADDRESS : relaySponsoredTx (Zodiac Roles, router EOA plaća gas)
     FUNDS_AT_REVOLUT --> FUNDS_AT_MONERIUM_MPT : sepaNoReference (prazan memo — Revolut iOS ga ponekad ispusti)
     FUNDS_AT_MONERIUM_MPT --> FUNDS_AT_MONERIUM_MPT : checkoutReceived (order.created → „zaprimljeno" preko SSE, 0 s od placedAt)
-    EURE_AT_MAIN_RAIL_SAFE --> PAID_MERCHANT : forwardToPayee (referenca mpt#colon;0x<trgovac>?sid, whitelist, paid na onchain potvrdi)
-    EURE_AT_MAIN_RAIL_SAFE --> EURE_AT_MAIN_RAIL_SAFE : strayResolve (bez reference → intent istog tenanta po iznosu i vremenu; nejednoznačno → parkirano)
+    EURE_AT_TENANT_SAFE --> PAID_MERCHANT : forwardToPayee (referenca mpt#colon;0x<trgovac>?sid, whitelist, paid na onchain potvrdi)
+    EURE_AT_TENANT_SAFE --> EURE_AT_TENANT_SAFE : strayResolve (bez reference → intent istog tenanta po iznosu i vremenu; nejednoznačno → parkirano)
+    EURE_AT_TENANT_SAFE --> EURE_AT_TENANT_SAFE : strayPark (nema kandidata ili konflikt → ostaje na Safeu, alarm, forward.blocked)
+    EURE_AT_TENANT_SAFE --> PAID_MERCHANT : operatorReroute (admin konzola, iste provjere, samo odobrene adrese)
+    PAID_MERCHANT --> PAID_MERCHANT : underpaidNotice (manja uplata — novac stigne, intent ne postaje paid, webhook payment.underpaid)
     EURE_AT_USER_ADDRESS --> EURE_AT_OTHER_ADDRESS : onchainTransfer (gas sponzoriran)
     EURE_AT_USER_ADDRESS --> PAID_MERCHANT : payCheckoutIntent (max 10.000 €, paid na onchain potvrdi)
     EURE_AT_USER_ADDRESS --> FUNDS_AT_OWN_MONERIUM : openMoneriumKyc + redeemEure (potpisani nalog)
@@ -99,13 +102,15 @@ stateDiagram-v2
 2. Iznosi se čuvaju **1:1** — zbroj svih salda konstantan je kroz cijeli tok (nema curenja).
 3. Nijedno saldo nikad ne ide u minus; guardovi (min/max) odbijaju iznose izvan limita bez pomicanja novca.
 
-## Simulacijski scenariji (N = 8)
+## Simulacijski scenariji (N = 10)
 
 1. **Kupac plaća trgovcu iz banke** — glavni tok: SEPA s referencom `mpt:0x<trgovac>?sid=…`, „zaprimljeno" odmah, forward sa Safea izravno trgovcu (25 €)
 2. **Uplata bez reference** — isti checkout, referenca izgubljena; stray resolver poveže uplatu s intentom po iznosu i vremenu (15 €)
-3. **On-ramp** — banka → EURe na Gnosis adresi (10 €)
-4. **Puni krug** — banka → … → potpisani redeem → besplatni off-ramp natrag u banku (50 € ode, 50 € se vrati)
-5. **Onchain P2P** — višestruki transferi nakon on-rampa (sponzorirani gas)
-6. **Checkout iz walleta** — korisnik koji već drži EURe plaća intent onchain, `paid` na onchain potvrdi
-7. **Gnosis Pay VISA grana** — virtualna kartica na vlastitom GP Safeu, punjenje EURe transferom, POS plaćanje i besplatni top-up Revoluta karticom — krug se vrti dalje (u pripremi)
-8. **Guardovi** — odbijanje 9,99 € top-upa i 0,50 € SEPA-e (Revolutovi limiti); u testovima i odbijanje intenta > 10.000 € (MPT guard)
+3. **Uplata koju resolver ne može povezati** — bez reference i s drugim iznosom: parkirano na Safeu trgovca, operater ručno preusmjeri (20 €)
+4. **Manja uplata** — narudžba 25 €, kupac pošalje 20 €: novac stigne trgovcu, intent ne postaje `paid`, webhook `payment.underpaid`
+5. **On-ramp** — banka → EURe na Gnosis adresi (10 €)
+6. **Puni krug** — banka → … → potpisani redeem → besplatni off-ramp natrag u banku (50 € ode, 50 € se vrati)
+7. **Onchain P2P** — višestruki transferi nakon on-rampa (sponzorirani gas)
+8. **Checkout iz walleta** — korisnik koji već drži EURe plaća intent onchain, `paid` na onchain potvrdi
+9. **Gnosis Pay VISA grana** — virtualna kartica na vlastitom GP Safeu, punjenje EURe transferom, POS plaćanje i besplatni top-up Revoluta karticom — krug se vrti dalje (u pripremi)
+10. **Guardovi** — odbijanje 9,99 € top-upa i 0,50 € SEPA-e (Revolutovi limiti); u testovima i odbijanje intenta > 10.000 € (MPT guard)
