@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<!-- Izvor za public/og.png: rsvg-convert -w 1200 -h 630 docs/brand/og.svg -o public/og.png -->
+<defs>
+  <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+    <stop offset="0" stop-color="#001A3D"/>
+    <stop offset="0.55" stop-color="#002A5E"/>
+    <stop offset="1" stop-color="#1F3550"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="0.82" cy="0.05" r="0.45">
+    <stop offset="0" stop-color="#3C5A6E" stop-opacity="0.55"/>
+    <stop offset="1" stop-color="#3C5A6E" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<rect width="1200" height="630" fill="url(#bg)"/>
+<rect width="1200" height="630" fill="url(#glow)"/>
+
+<!-- znak: bijela inačica pločice (na tamnoj pozadini) -->
+<g transform="translate(80 80) scale(2.5)">
+  <rect width="32" height="32" rx="8" fill="#FFFFFF"/>
+  <path d="M7 9h4v14H7zM21 9h4v14h-4z" fill="#002F6C"/>
+  <path d="M11 9l5 6.5L21 9v5.5l-5 6.5-5-6.5z" fill="#E3AF35"/>
+</g>
+<text x="182" y="132" font-family="Georgia, serif" font-weight="700" font-size="38" fill="#FFFFFF">MPT · Mint Pay Transfer</text>
+
+<g font-family="Georgia, serif" font-weight="700" font-size="66">
+  <text x="80" y="296" fill="#FFFFFF">Kupac plaća iz banke.</text>
+  <text x="80" y="384" fill="#E3AF35">Novac stiže izravno trgovcu.</text>
+</g>
+<text x="80" y="472" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" fill="#C9D6E6">Orkestrator za Monerium račune trgovaca — RevenueCat za SEPA → EURe</text>
+<text x="80" y="560" font-family="Helvetica Neue, Arial, sans-serif" font-size="23" fill="#8EA3BF">~12 s do „paid“ · novac nikad ne prolazi kroz MPT · otvoreni kod (MIT)</text>
+<text x="1120" y="560" text-anchor="end" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="24" fill="#E3AF35">mpt.hr</text>
+</svg>

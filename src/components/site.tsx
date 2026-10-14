@@ -177,18 +177,13 @@ function Nav({ dict, locale, page }: { dict: Dictionary; locale: Locale; page: P
 	);
 }
 
+// Isti znak kao public/favicon.svg i mediakit mpt_logo_square.svg.
 export function Logo() {
 	return (
 		<svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden>
-			<rect width="32" height="32" rx="9" fill="#002F6C" />
-			<path
-				d="M8 21V11l5 6 5-6v10"
-				stroke="#FFFFFF"
-				strokeWidth="2.4"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-			<path d="M22 16h4m0 0-2-2m2 2-2 2" stroke="#E3AF35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+			<rect width="32" height="32" rx="8" fill="#002F6C" />
+			<path d="M7 9h4v14H7zM21 9h4v14h-4z" fill="#FFFFFF" />
+			<path d="M11 9l5 6.5L21 9v5.5l-5 6.5-5-6.5z" fill="#E3AF35" />
 		</svg>
 	);
 }

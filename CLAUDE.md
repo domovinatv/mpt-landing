@@ -36,8 +36,9 @@ Zajednički dijelovi (nav, footer, CTA traka, `pageMetadata`, `localHref`) su u
 `src/components/site.tsx`; interni hrefovi u dictionaries su bez locale prefiksa
 (`/pricing`, `/#how`). Nova stranica = `pagePaths` + `dict.pages.<key>` + middleware
 matcher (preusmjerenje rute bez jezika). `sitemap.ts` i hreflang (s `x-default`) se
-izvode iz `pagePaths`; `robots.ts` upućuje na sitemap. OG slika je statični `public/og.png` (izvor: SVG renderiran
-`rsvg-convert`, 1200×630).
+izvode iz `pagePaths`; `robots.ts` upućuje na sitemap. OG slika je statični `public/og.png`, izvor je `docs/brand/og.svg`
+(`rsvg-convert -w 1200 -h 630 docs/brand/og.svg -o public/og.png`). Znak (M pločica) je isti u
+`public/favicon.svg`, `Logo()` u `site.tsx` i mediakitu (`mpt_logo_square.svg`); mijenjaj sva tri skupa.
 Iskreno o stanju: multi-tenant rail (ADR 0017) je u produkcijskom kodu ali isključen
 (`MULTI_TENANT_RAIL=0`) dok prvi vanjski tenant ne završi KYB — ITalk je jedini aktivni
 tenant. Sekcija `#status` (u produkciji / u pripremi / poznata ograničenja) mora se
