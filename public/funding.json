@@ -1,0 +1,62 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "organisation",
+    "role": "owner",
+    "name": "ITalk d.o.o.",
+    "email": "ms@mpt.hr",
+    "description": "ITalk d.o.o. is a small software company in Zagreb, Croatia (OIB 54872935051, EUID HRSR.081042440). It builds and maintains MPT (Mint Pay Transfer), an open-source orchestrator that lets merchants accept SEPA bank payments into their own Monerium EURe accounts. The development team is one person, Matija Stepanić, who is the director and sole engineer. ITalk is a non-custodial software provider: it never receives or holds customer money, and the regulated functions are performed by Monerium (EMI, MiCA EMT issuer).",
+    "webpageUrl": {
+      "url": "https://mpt.hr"
+    }
+  },
+  "projects": [
+    {
+      "guid": "mpt",
+      "name": "MPT (Mint Pay Transfer)",
+      "description": "MPT is an orchestrator for many Monerium accounts (tenants), the RevenueCat model applied to SEPA to EURe. A buyer pays from any euro-area bank with a structured reference; the money arrives on the merchant's own Monerium IBAN, is minted as EURe into the merchant's Safe on Gnosis Chain, and MPT matches it to a payment intent and sends a signed webhook to the merchant. MPT never holds funds. It includes a payment-intent API with SSE status, a resolver for payments that lost their reference, a Zodiac Roles router that can only call EURe.transfer to owner-approved Safes, a self-serve sandbox, and a passkey-owned Safe wallet. It runs on Cloudflare Workers and D1 and is MIT-licensed, so anyone can run their own MPT. Status: in production since May 2026 for ITalk's own projects; the multi-tenant rail is in production code but enabled only for ITalk until the first external merchant completes KYB.",
+      "webpageUrl": {
+        "url": "https://mpt.hr"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/domovinatv/pay.domovina.ai",
+        "wellKnown": "https://github.com/domovinatv/pay.domovina.ai/blob/main/.well-known/funding-manifest-urls"
+      },
+      "licenses": ["spdx:MIT"],
+      "tags": ["payments", "finance", "e-commerce", "api", "sepa", "stablecoin", "ethereum", "gnosis-chain", "safe", "open-banking"]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "italk-bank",
+        "type": "bank",
+        "address": "ITalk d.o.o., IX. Južna obala 20, 10000 Zagreb, Croatia. IBAN provided on request (ms@mpt.hr).",
+        "description": "SEPA or international wire to ITalk d.o.o.'s business account in Croatia."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "core-maintenance",
+        "status": "active",
+        "name": "Core maintenance and hardening",
+        "description": "One year of solo-developer time (about 500 hours) to maintain the MPT core: payment-intent and webhook logic, refunds and top-up payments, intent expiry, the stray-payment resolver, dependency and security updates, and the fixes from an external security review. Work funded by other grants (public API docs, SDK, self-host package, e-commerce plugins) is kept separate and not billed twice.",
+        "amount": 50000,
+        "currency": "USD",
+        "frequency": "yearly",
+        "channels": ["italk-bank"]
+      },
+      {
+        "guid": "one-time-support",
+        "status": "active",
+        "name": "One-time support",
+        "description": "Any amount, used for MPT development and infrastructure.",
+        "amount": 0,
+        "currency": "EUR",
+        "frequency": "one-time",
+        "channels": ["italk-bank"]
+      }
+    ]
+  }
+}
