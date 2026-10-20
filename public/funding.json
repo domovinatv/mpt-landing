@@ -32,8 +32,8 @@
       {
         "guid": "italk-bank",
         "type": "bank",
-        "address": "ITalk d.o.o., IX. Južna obala 20, 10000 Zagreb, Croatia. IBAN provided on request (ms@mpt.hr).",
-        "description": "SEPA or international wire to ITalk d.o.o.'s business account in Croatia."
+        "address": "ITalk d.o.o., IX. Južna obala 20, 10000 Zagreb, Croatia. IBAN EE70 7777 0001 6292 1128 (Monerium).",
+        "description": "SEPA transfer in EUR to ITalk d.o.o.'s Monerium IBAN. Monerium mints the received euros as EURe directly into ITalk's Safe on Gnosis Chain, the same rail MPT runs on."
       }
     ],
     "plans": [
