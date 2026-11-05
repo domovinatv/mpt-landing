@@ -52,6 +52,7 @@ const MptNode = memo(function MptNode({ data }: NodeProps<Node<MptNodeData>>) {
 			<Handle type="source" position={Position.Right} id="r" className="!bg-navy/40" />
 			<Handle type="target" position={Position.Right} id="rt" className="!bg-navy/40" />
 			<Handle type="source" position={Position.Left} id="ls" className="!bg-navy/40" />
+			<Handle type="source" position={Position.Top} id="ts" className="!bg-navy/40" />
 			<Handle type="target" position={Position.Left} id="l" className="!bg-navy/40" />
 			<div className="flex items-start justify-between gap-2">
 				<p className="text-sm font-semibold text-ink">{data.title}</p>
@@ -140,36 +141,49 @@ const edgeTypes = { mpt: MptEdge };
 export type FlowOrientation = "vertical" | "horizontal";
 
 /**
- * Wide-screen layout: the circle is explicit — the rail flows left→right in the
- * top row, drops to the bottom row at the user's address, and the two return
- * edges (off-ramp to the bank, GP card top-up to Revolut) climb back up left.
+ * Wide-screen layout. Middle row: the checkout rail, left→right — bank → Revolut →
+ * the merchant's Monerium IBAN → Monerium mints straight into the merchant's Safe.
+ * Above it: the detour for payments without a reference (mint to the tenant's main
+ * Safe, then ProjectRouter to the project Safe). Bottom row: the user's own wallet,
+ * funded through an own Monerium account, and the branches that leave from it; the
+ * return edges (off-ramp to the bank, GP card top-up to Revolut) climb back up.
  */
 const H_POS: Record<NodeId, { x: number; y: number }> = {
 	bank: { x: 0, y: 60 },
 	revolut: { x: 360, y: 60 },
 	moneriumMpt: { x: 720, y: 60 },
-	safeRelayer: { x: 1080, y: 60 },
-	userAddress: { x: 1440, y: 60 },
-	otherAddress: { x: 1800, y: 430 },
-	merchant: { x: 1080, y: 430 },
-	gnosisPay: { x: 720, y: 430 },
-	ownMonerium: { x: 360, y: 430 },
+	safeRelayer: { x: 1080, y: -300 },
+	merchant: { x: 1440, y: 60 },
+	ownMonerium: { x: 360, y: 470 },
+	userAddress: { x: 720, y: 470 },
+	gnosisPay: { x: 1080, y: 470 },
+	otherAddress: { x: 1440, y: 470 },
 };
 
-/** horizontal-layout edge routing: rail = left→right, drop = down from the rail, up = climb back left */
-const H_KIND: Record<EdgeId, "rail" | "drop" | "up"> = {
-	"e-card": "rail",
-	"e-sepa": "rail",
-	"e-mint": "rail",
-	"e-relay": "rail",
-	"e-forward": "drop",
-	"e-p2p": "drop",
-	"e-checkout": "drop",
-	"e-gp-fund": "drop",
-	"e-redeem": "drop",
-	"e-gp-spend": "rail",
-	"e-gp-revolut": "up",
-	"e-offramp": "up",
+type HRoute = {
+	source: string;
+	target: string;
+	labelOffsetY?: number;
+	labelT?: number;
+};
+
+/** horizontal-layout edge routing: which handles each edge uses and where its label sits */
+const H_ROUTE: Record<EdgeId, HRoute> = {
+	"e-card": { source: "r", target: "l", labelOffsetY: 96 },
+	"e-sepa": { source: "r", target: "l", labelOffsetY: 96 },
+	// direct mint: the empty slot between Monerium and the merchant is the point
+	"e-mint": { source: "r", target: "l" },
+	"e-mint-main": { source: "ts", target: "l" },
+	"e-forward": { source: "r", target: "t" },
+	"e-own-sepa": { source: "b", target: "t" },
+	"e-own-mint": { source: "r", target: "l", labelOffsetY: -95 },
+	"e-redeem": { source: "b", target: "bt", labelT: 0.5, labelOffsetY: 100 },
+	"e-offramp": { source: "ls", target: "bt" },
+	"e-p2p": { source: "b", target: "bt", labelT: 0.5, labelOffsetY: 100 },
+	"e-checkout": { source: "ts", target: "bt", labelT: 0.62 },
+	"e-gp-fund": { source: "r", target: "l", labelOffsetY: -95 },
+	"e-gp-spend": { source: "r", target: "bt", labelT: 0.55 },
+	"e-gp-revolut": { source: "ts", target: "bt", labelT: 0.3 },
 };
 
 /** single-column order for phones — everything stacked, near full-size nodes */
@@ -178,11 +192,11 @@ const V_ORDER: NodeId[] = [
 	"revolut",
 	"moneriumMpt",
 	"safeRelayer",
+	"merchant",
+	"ownMonerium",
 	"userAddress",
 	"otherAddress",
 	"gnosisPay",
-	"merchant",
-	"ownMonerium",
 ];
 
 const V_POS: Record<NodeId, { x: number; y: number }> = Object.fromEntries(
@@ -191,8 +205,11 @@ const V_POS: Record<NodeId, { x: number; y: number }> = Object.fromEntries(
 
 /** non-adjacent connections in the single column — drawn as right-side arcs, no label */
 const V_ARC: Set<EdgeId> = new Set([
+	"e-mint",
+	"e-own-sepa",
 	"e-checkout",
 	"e-gp-fund",
+	"e-gp-spend",
 	"e-redeem",
 	"e-gp-revolut",
 	"e-offramp",
@@ -257,21 +274,11 @@ export default function FlowDiagram({
 				let labelOffsetY = 0;
 				let labelT: number | undefined;
 				if (horizontal) {
-					const kind = H_KIND[e.id];
-					if (kind === "rail") {
-						sourceHandle = "r";
-						targetHandle = "l";
-						labelOffsetY = 96; // drop rail labels into the band between the rows
-					} else if (kind === "drop") {
-						sourceHandle = "b";
-						targetHandle = "t";
-						// pull fan-out labels toward their targets so they don't collide; the
-						// straight Safe → merchant forward keeps its label mid-way, above that row
-						labelT = e.id === "e-forward" ? 0.42 : 0.78;
-					} else {
-						sourceHandle = "ls";
-						targetHandle = "bt";
-					}
+					const route = H_ROUTE[e.id];
+					sourceHandle = route.source;
+					targetHandle = route.target;
+					labelOffsetY = route.labelOffsetY ?? 0;
+					labelT = route.labelT;
 				} else if (V_ARC.has(e.id)) {
 					// skip connections arc along the right side of the single column
 					sourceHandle = "r";
@@ -316,7 +323,7 @@ export default function FlowDiagram({
 			nodeTypes={nodeTypes}
 			edgeTypes={edgeTypes}
 			fitView
-			fitViewOptions={{ padding: horizontal ? 0.04 : 0.02 }}
+			fitViewOptions={{ padding: horizontal ? 0.08 : 0.02 }}
 			minZoom={0.2}
 			maxZoom={1.5}
 			zoomOnScroll={false}

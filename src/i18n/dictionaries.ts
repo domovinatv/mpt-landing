@@ -12,12 +12,12 @@ const hr = {
 		home: {
 			title: "MPT — kupac plaća iz banke, novac stiže izravno trgovcu",
 			description:
-				"MPT (Mint Pay Transfer), proizvod tvrtke ITalk d.o.o., orkestrira plaćanja na Monerium računima trgovaca — kao RevenueCat, ali za SEPA → EURe. Novac stiže izravno trgovcu za ~12 s i MPT ga nikad ne drži. Kupac MPT-u ne plaća ništa.",
+				"MPT (Mint Pay Transfer), proizvod tvrtke ITalk d.o.o., orkestrira plaćanja na Monerium računima trgovaca — kao RevenueCat, ali za SEPA → EURe. Monerium minta novac izravno u Safe trgovca, MPT javlja „paid“ za ~12 s i novac nikad ne drži. Kupac MPT-u ne plaća ništa.",
 		},
 		flow: {
 			title: "Tok novca i simulacije — MPT",
 			description:
-				"Svaki korak MPT plaćanja: od SEPA uplate kupca do EURe forwarda na adresu trgovca, s izmjerenim vremenima, naknadama i interaktivnim simulacijama.",
+				"Svaki korak MPT plaćanja: od SEPA uplate kupca do EURe koji Monerium minta izravno u Safe trgovca, s izmjerenim vremenima, naknadama i interaktivnim simulacijama.",
 		},
 		pricing: {
 			title: "Cijene — MPT",
@@ -56,7 +56,7 @@ const hr = {
 		title: "Kupac plaća iz banke.",
 		titleAccent: "Novac stiže izravno trgovcu.",
 		subtitle:
-			"MPT je ono što je RevenueCat za pretplate u aplikacijama — samo za SEPA plaćanja u EURe. Svaki trgovac ima vlastiti Monerium IBAN i Safe; MPT vodi checkout, reference, routing, webhookove i status uživo, a novac nikad ne drži.",
+			"MPT je ono što je RevenueCat za pretplate u aplikacijama — samo za SEPA plaćanja u EURe. Svaki trgovac ima vlastiti Monerium IBAN i Safe; Monerium minta EURe izravno u Safe trgovca, a MPT vodi checkout, reference, uparivanje uplata, webhookove i status uživo — novac nikad ne drži.",
 		ctaPrimary: "Zatraži integraciju",
 		ctaSecondary: "Pogledaj tok novca",
 		cardLabel: "Izmjereno u produkciji · listopad 2026.",
@@ -67,7 +67,7 @@ const hr = {
 			{ label: "Naknada kupca (SEPA Instant iz Revoluta)", value: "0,00 €" },
 			{ label: "Tko drži novac", value: "trgovac" },
 		],
-		cardFootnote: "Prvu uplatu s novog IBAN-a Monerium ručno pregleda — od nekoliko minuta do nekoliko sati. Prvi tenant u produkciji: ITalk d.o.o.; drugi trgovci uključuju se nakon KYB-a.",
+		cardFootnote: "Prvu uplatu s novog IBAN-a Monerium ručno pregleda — od nekoliko minuta do nekoliko sati. Jedini tenant s pravim novcem u produkciji je zasad ITalk d.o.o.; drugi trgovci uključuju se nakon Moneriumova KYB-a.",
 	},
 	how: {
 		title: "Orkestrator, ne posrednik",
@@ -84,7 +84,7 @@ const hr = {
 			{
 				aspect: "Što radi orkestrator",
 				rc: "status pretplata, entitlementi, webhookovi",
-				mpt: "checkout intenti, reference, routing, webhookovi, status uživo",
+				mpt: "checkout intenti, reference, uparivanje uplata, webhookovi, status uživo",
 			},
 			{ aspect: "Integracija", rc: "jedan SDK za obje trgovine", mpt: "jedan API za sve Monerium račune (tenante)" },
 			{ aspect: "Cijena", rc: "besplatno do 2.500 $ mjesečno, zatim 1%", mpt: "besplatno do 2.500 € mjesečno, zatim 1%" },
@@ -92,7 +92,7 @@ const hr = {
 		cards: [
 			{
 				title: "Vlastiti Monerium račun po trgovcu",
-				text: "Svaki tenant ima vlastiti KYB, IBAN, Safe (2/3 multisig) i listu odobrenih adresa. Novac koji je sletio na IBAN trgovca X može završiti samo na adresama trgovca X — provjera je fail-closed, a forward ide kroz Zodiac Roles rolu koja smije samo EURe.transfer.",
+				text: "Svaki tenant ima vlastiti KYB, IBAN, glavni Safe (2/3 multisig) i projektne Safe-ove povezane s njegovim Monerium profilom. Monerium minta izravno u Safe iz reference; uplatu bez reference rola ProjectRouter smije proslijediti samo na projektne Safe-ove koje su vlasnici odobrili — to provodi Zodiac Roles na lancu, ne MPT-ov kod.",
 			},
 			{
 				title: "Jedna integracija, ista poslovna logika",
@@ -100,7 +100,7 @@ const hr = {
 			},
 			{
 				title: "Otporno na stvarne uplate",
-				text: "Uplata bez reference povezuje se s intentom po iznosu i vremenu, manja uplata nikad nije „paid“, a svaki forward koji ne prođe završava kao alarm — nikad tiho. Intent se plaćenim označi samo jednom; svaka dodatna uplata svejedno stiže trgovcu i javlja se webhookom.",
+				text: "Uplata bez reference povezuje se s intentom po iznosu i vremenu ili kratkom kodu, manja uplata nikad nije „paid“, a svaka uplata koju rail ne može riješiti završava kao alarm — nikad tiho. Intent se plaćenim označi samo jednom; svaka dodatna uplata svejedno stiže trgovcu i javlja se webhookom.",
 			},
 			{
 				title: "Otvoreni kod — imaj svoj MPT",
@@ -111,12 +111,12 @@ const hr = {
 	integrate: {
 		title: "Integracija u tri koraka",
 		subtitle:
-			"Tvoj backend kreira intent, kupac plati iz banke, a ti dobiješ webhook kad je novac na tvojoj adresi. Javna dokumentacija API-ja je u izradi — dotad integraciju radimo zajedno.",
+			"Tvoj backend kreira intent, kupac plati iz banke, Monerium minta u tvoj Safe, a ti dobiješ webhook kad je novac tamo. Javna dokumentacija API-ja je u izradi — dotad integraciju radimo zajedno.",
 		steps: [
 			{
 				num: "01",
 				title: "Kreiraj intent",
-				text: "Pošalji iznos i jednu od svojih odobrenih adresa. Dobiješ referencu, EPC QR, checkout stranicu i URL za status uživo.",
+				text: "Pošalji iznos i Safe projekta povezan s tvojim Monerium računom. Dobiješ referencu (i kratki kod), EPC QR, checkout stranicu i URL za status uživo.",
 			},
 			{
 				num: "02",
@@ -126,7 +126,7 @@ const hr = {
 			{
 				num: "03",
 				title: "Primi webhook",
-				text: "intent.paid stiže kad je forward potvrđen onchain, ~12 s od uplate. Postoje i payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked i contribution.sepa.",
+				text: "intent.paid stiže kad Monerium obradi uplatu i EURe je u tvom Safeu (u produkciji ~12 s od uplate). Postoje i payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked i contribution.sepa.",
 			},
 		],
 		requestTitle: "Zahtjev",
@@ -173,11 +173,11 @@ const hr = {
 			},
 			{
 				title: "Novac je trgovčev",
-				text: "IBAN i Safe pripadaju trgovcu. MPT smije samo proslijediti EURe na adrese koje je trgovac odobrio, i to kroz Zodiac Roles rolu koja ne može ništa osim EURe transfera.",
+				text: "IBAN i Safe-ovi pripadaju trgovcu. MPT nema ključ koji može pomaknuti novac izvan skupa Safe-ova koje su vlasnici odobrili: rola ProjectRouter smije samo EURe transfer na te Safe-ove, a to provodi Zodiac Roles na lancu.",
 			},
 			{
 				title: "Provjerljivo",
-				text: "Kod je otvoren (MIT), svaki forward je javno vidljiv onchain, a stanje sustava objavljujemo bez uljepšavanja — ispod.",
+				text: "Kod je otvoren (MIT), svaki mint i transfer je javno vidljiv onchain, a stanje sustava objavljujemo bez uljepšavanja — ispod.",
 			},
 		],
 	},
@@ -189,7 +189,7 @@ const hr = {
 			{
 				num: "01",
 				title: "Kupac plaća iz svoje banke",
-				text: "Najjeftiniji put: debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya kupac napuni Revolut (min. 10 €, Revolutov produktni limit), pa na checkoutu skenira EPC QR i pošalje SEPA Instant (min. 1 €) — kartičnu i SEPA transakciju plaća Revolut, kupac 0 €. Uplata izravno iz klasične hrvatske banke također radi, ali tada kupac plaća naknadu svoje banke za nalog. U referenci piše kome novac ide: mpt:0x<trgovac>?sid=<intent>.",
+				text: "Najjeftiniji put: debitnom karticom hrvatske banke (PBZ, ZABA, OTP, Erste, HPB…) preko Apple Paya ili Google Paya kupac napuni Revolut (min. 10 €, Revolutov produktni limit), pa na checkoutu skenira EPC QR i pošalje SEPA Instant (min. 1 €) — kartičnu i SEPA transakciju plaća Revolut, kupac 0 €. Uplata izravno iz klasične hrvatske banke također radi, ali tada kupac plaća naknadu svoje banke za nalog. U referenci piše u koji Safe Monerium minta: gnosis:0x<Safe trgovca> sid:<intent>.",
 			},
 			{
 				num: "02",
@@ -198,19 +198,19 @@ const hr = {
 			},
 			{
 				num: "03",
-				title: "Mint EURe i forward trgovcu — 0 €",
-				text: "Monerium minta EURe 1:1 na Safe trgovca (2/3 multisig) na Gnosis Chainu — medijan 9 s od uplate. MPT backend (Cloudflare Workers) izvrši forward kroz Zodiac Roles modul (rola smije samo EURe.transfer) na adresu iz reference — fail-closed, samo na odobrene adrese tog trgovca; gas plaća MPT-ov router. Intent postaje „paid“ na onchain potvrdi, ~12 s od uplate, a trgovac dobiva webhook.",
+				title: "Monerium minta izravno u Safe trgovca — 0 €",
+				text: "Monerium minta EURe 1:1 izravno u Safe trgovca ili projekta iz reference, na Gnosis Chainu — medijan 9 s od uplate. Taj Safe mora biti povezan s Monerium profilom trgovca. MPT novac ne dira: kad Monerium javi da je uplata obrađena, intent postaje „paid“, a trgovac dobiva potpisani webhook — u produkciji ~12 s od uplate.",
 			},
 			{
 				num: "04",
 				title: "Ako se referenca izgubi — novac svejedno stiže",
-				text: "Kad referenca izostane (Revolut iOS je ponekad ispusti iz QR koda), resolver uplatu poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu: ako je kandidat jednoznačan, forward ide automatski; inače novac ostaje parkiran na Safeu trgovca dok ga operater ručno ne preusmjeri. Manja uplata od iznosa intenta nikad ne postaje „paid“.",
+				text: "Kad referenca izostane (Revolut nakon skeniranja QR koda opis često ispusti), Monerium minta na glavni Safe trgovca. Resolver uplatu poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu ili po kratkom kodu: ako je kandidat jednoznačan, rola ProjectRouter je automatski proslijedi na projektni Safe — samo na onaj koji su vlasnici (2/3) odobrili, a to provodi Zodiac Roles na lancu; gas plaća MPT. Inače novac ostaje parkiran na glavnom Safeu dok ga operater ili vlasnici ne vežu uz pravu narudžbu. Manja uplata od iznosa intenta nikad ne postaje „paid“.",
 			},
 		],
 		notes: [
 			{
 				title: "Isti rail, i drugi smjerovi",
-				text: "Isti rail puni i korisnikov vlastiti wallet (on-ramp), iz kojeg se plaća checkout ili rade P2P transferi sa sponzoriranim gasom. Off-ramp ide preko vlastitog Monerium računa i besplatnog SEPA Instanta natrag u banku — krug se zatvara gdje je i počeo. Sve je u simulacijama ispod.",
+				text: "Vlastiti wallet korisnik puni preko vlastitog Monerium računa (ili računa kampanje), ne preko MPT-a: MPT od 15. 10. 2026. ne prosljeđuje uplate na proizvoljnu adresu. Iz walleta se plaća checkout ili rade P2P transferi sa sponzoriranim gasom, a off-ramp ide preko istog Monerium računa i besplatnog SEPA Instanta natrag u banku — krug se zatvara gdje je i počeo. Osobe od 30. 10. 2026. Monerium račun ne otvaraju u Moneriumovoj aplikaciji nego preko partnera. Sve je u simulacijama ispod.",
 			},
 			{
 				title: "Alternativna grana: Gnosis Pay VISA (u pripremi)",
@@ -234,29 +234,29 @@ const hr = {
 				"Checkout intenti s EPC QR kodom — do 10.000 € po intentu, valjanost zadano 15 min, najviše 24 h",
 				"„Zaprimljeno“ odmah i status uživo preko SSE-a (od 5. 10. 2026.)",
 				"Potpisani webhookovi za trgovce (received · paid · underpaid · late · rejected · blocked · kampanje) s trajnim outboxom",
-				"Uplate bez reference: automatsko povezivanje s intentom (od 8. 10. 2026.)",
-				"Isplata samo na odobrene adrese tenanta — fail-closed (od 1. 8. 2026.)",
-				"Nadzor Safea: alarm za svaki izlaz koji nije MPT-ov forward",
+				"Izravni mint: Monerium minta u Safe trgovca ili projekta iz reference, MPT nema ključ koji pomiče novac s njega (od 15. 10. 2026.)",
+				"Uplate bez reference: automatsko povezivanje s intentom (od 8. 10. 2026.), kratki kod intenta (od 20. 10. 2026.) i prosljeđivanje rolom ProjectRouter samo na projektne Safe-ove koje su vlasnici odobrili (od 19. 10. 2026.)",
+				"Multi-tenant rail uključen: svaki tenant ima vlastiti Monerium račun i rail; jedini tenant s pravim novcem je zasad ITalk d.o.o.",
+				"Nadzor Safea: alarm za svaki izlaz koji rail nije sam pokrenuo",
 				"Nezavisni code reviewi s riješenim nalazima i CI na svakom PR-u",
 			],
 		},
 		prep: {
 			title: "U pripremi",
 			items: [
-				"Drugi tenanti s vlastitim Monerium računom — multi-tenant rail radi (testni sandbox tenant spojen 9. 10. 2026.), u produkciji se uključuje s prvim trgovcem koji završi KYB",
+				"Prvi vanjski trgovac s vlastitim Monerium računom — rail je spreman, čeka se trgovac koji završi Moneriumov KYB",
 				"Shopify: MPT kao način plaćanja s QR kodom — aplikacija napisana, puštanje i prvi test na stvarnoj trgovini predstoje",
 				"WooCommerce — plan",
 				"Javna dokumentacija API-ja",
 				"Gnosis Pay VISA grana — pre-pilot",
-				"Potpisivanje forwarda izvan clouda (M-of-N kvorum uređaja) — prijedlog",
 			],
 		},
 		limits: {
 			title: "Poznata ograničenja",
 			items: [
 				"Prvu uplatu s novog IBAN-a Monerium zadržava na ručnom pregledu — od nekoliko minuta do nekoliko sati. Sljedeće uplate s istog IBAN-a prolaze za sekunde.",
-				"Revolut iOS ponekad ispusti referencu iz QR koda — resolver to pokriva kad je kandidat jednoznačan, inače uplatu ručno preusmjeri operater.",
-				"SEPA povrat (recall) nakon što je EURe već proslijeđen nije automatiziran.",
+				"Revolut nakon skeniranja QR koda često ispusti referencu — resolver i kratki kod to pokrivaju kad je kandidat jednoznačan, inače uplatu ručno veže operater ili vlasnici Safea.",
+				"SEPA povrat (recall) nakon što je EURe već mintan nije automatiziran.",
 			],
 		},
 	},
@@ -273,7 +273,7 @@ const hr = {
 				features: [
 					"Sve funkcije: checkout intenti, EPC QR, status uživo, webhookovi",
 					"Uplate bez reference — automatsko povezivanje s intentom",
-					"Gas za forward plaća MPT",
+					"Gas za prosljeđivanje uplata bez reference plaća MPT",
 					"Vlastiti Monerium IBAN i Safe — novac je uvijek tvoj",
 				],
 				cta: "Zatraži integraciju",
@@ -322,7 +322,7 @@ const hr = {
 			},
 			{
 				q: "Uzima li MPT postotak iz same uplate?",
-				a: "Ne. Puni iznos stiže na tvoju adresu; naknada se obračunava zasebno, mjesečno, prema ugovoru.",
+				a: "Ne. Puni iznos stiže u tvoj Safe; naknada se obračunava zasebno, mjesečno, prema ugovoru.",
 			},
 			{
 				q: "Što ako jedan mjesec prijeđem 2.500 €, a sljedeći ne?",
@@ -345,7 +345,7 @@ const hr = {
 			"Sve što trgovac pita prije integracije: što ti treba, kako teče onboarding i što MPT napravi u svakom slučaju koji nije savršena uplata. Ponašanje opisano ovdje je ono što kod danas radi, ne plan.",
 		onboardingTitle: "Onboarding",
 		onboardingSubtitle:
-			"Trajanje najviše ovisi o Moneriumovom KYB-u. Tehnički dio radimo zajedno, a gas za forward MPT plaća i puni sam — o tome ne brineš.",
+			"Trajanje najviše ovisi o Moneriumovom KYB-u. Tehnički dio radimo zajedno, a gas za prosljeđivanje uplata bez reference MPT plaća i puni sam — o tome ne brineš.",
 		onboarding: [
 			{
 				num: "01",
@@ -354,13 +354,13 @@ const hr = {
 			},
 			{
 				num: "02",
-				title: "Safe i odobrene adrese",
-				text: "Tvoj Safe (2 od 3 potpisa) prima EURe s tvog IBAN-a. Popisuješ adrese na koje MPT smije proslijediti novac — samo tvoje.",
+				title: "Glavni Safe i projektni Safe-ovi",
+				text: "Glavni Safe (2 od 3 potpisa) je Moneriumov default wallet tvog računa. Za svaki projekt ili trgovinu imaš Safe povezan s tvojim Monerium profilom — u njega Monerium minta izravno, po referenci.",
 			},
 			{
 				num: "03",
 				title: "Jedan potpis",
-				text: "Potpisuješ jednu transakciju na Safeu koja MPT-u daje rolu: smije samo EURe transfer, samo na tvoje adrese, do dogovorenog limita. Možeš je opozvati kad želiš.",
+				text: "Za uplate bez reference vlasnici glavnog Safea (2 od 3) potpisuju rolu ProjectRouter: smije samo EURe transfer, samo na tvoje projektne Safe-ove. Ograničenje provodi Zodiac Roles na lancu; novi projekt opet traži 2/3 potpis, a rolu možeš opozvati kad želiš.",
 			},
 			{
 				num: "04",
@@ -370,12 +370,12 @@ const hr = {
 		],
 		casesTitle: "Uplate koje ne idu po planu",
 		casesSubtitle:
-			"Novac se ne pogađa i ne gubi: ili stigne na tvoju adresu, ili ostane na tvom Safeu dok se ne riješi. Svaki ishod javlja se webhookom.",
+			"Novac se ne pogađa i ne gubi: ili stigne u Safe projekta, ili ostane na tvom glavnom Safeu dok se ne riješi. Svaki ishod javlja se webhookom.",
 		casesHead: { when: "Kad…", what: "MPT napravi", event: "Webhook" },
 		cases: [
 			{
 				when: "Kupac plati točan iznos",
-				what: "„Zaprimljeno“ na checkoutu ~5 s nakon što kupac pošalje uplatu, forward na tvoju adresu i status „paid“ ~12 s od uplate.",
+				what: "„Zaprimljeno“ na checkoutu ~5 s nakon što kupac pošalje uplatu, Monerium minta izravno u Safe projekta i status „paid“ ~12 s od uplate.",
 				event: "payment.received → intent.paid",
 			},
 			{
@@ -385,27 +385,27 @@ const hr = {
 			},
 			{
 				when: "Referenca se izgubi",
-				what: "Resolver traži tvoj otvoreni intent s točno tim iznosom u vremenskom prozoru oko uplate. Jednoznačan kandidat → normalan forward i „paid“. Nema kandidata ili su različiti → novac ostaje na tvom Safeu i operater ga ručno preusmjeri.",
+				what: "Monerium minta na tvoj glavni Safe. Resolver traži tvoj otvoreni intent s točno tim iznosom u vremenskom prozoru oko uplate, ili po kratkom kodu. Jednoznačan kandidat → ProjectRouter ga proslijedi na projektni Safe i „paid“. Nema kandidata ili su različiti → novac ostaje na glavnom Safeu dok ga operater ili vlasnici ne vežu uz narudžbu.",
 				event: "intent.paid ili forward.blocked",
 			},
 			{
 				when: "Kupac uplati manje",
-				what: "Novac stigne na tvoju adresu, ali intent ne postaje „paid“. Uplate se ne zbrajaju — o narudžbi (dopuna, povrat, otkaz) odlučuješ ti.",
+				what: "Novac stigne u tvoj Safe, ali intent ne postaje „paid“. Uplate se ne zbrajaju — o narudžbi (dopuna, povrat, otkaz) odlučuješ ti.",
 				event: "payment.underpaid",
 			},
 			{
 				when: "Kupac uplati više",
-				what: "Intent postaje „paid“, cijeli iznos stigne na tvoju adresu, a webhook nosi koliko je preplaćeno. Razliku kupcu vraćaš ti.",
+				what: "Intent postaje „paid“, cijeli iznos stigne u tvoj Safe, a webhook nosi koliko je preplaćeno. Razliku kupcu vraćaš ti.",
 				event: "intent.paid (overpaid_cents)",
 			},
 			{
 				when: "Kupac plati dvaput",
-				what: "Intent je plaćen samo jednom; druga uplata svejedno stigne na tvoju adresu i javi se zasebno. Povrat radiš ti.",
+				what: "Intent je plaćen samo jednom; druga uplata svejedno stigne u tvoj Safe i javi se zasebno. Povrat radiš ti.",
 				event: "payment.received",
 			},
 			{
 				when: "Uplata stigne nakon isteka",
-				what: "Novac stigne na tvoju adresu, intent ostaje istekao, a ti dobiješ zaseban događaj pa odlučuješ hoćeš li narudžbu ipak isporučiti.",
+				what: "Novac stigne u tvoj Safe, intent ostaje istekao, a ti dobiješ zaseban događaj pa odlučuješ hoćeš li narudžbu ipak isporučiti.",
 				event: "payment.late",
 			},
 			{
@@ -415,7 +415,7 @@ const hr = {
 			},
 			{
 				when: "Uplata nije u eurima",
-				what: "MPT radi samo s EUR. Uplata u drugoj valuti se ne prosljeđuje automatski nego ostaje na Safeu za ručno rješavanje.",
+				what: "MPT radi samo s EUR. Uplata u drugoj valuti ne veže se automatski uz intent nego se rješava ručno.",
 				event: "forward.blocked",
 			},
 			{
@@ -428,7 +428,7 @@ const hr = {
 		money: [
 			{
 				title: "Kako dobiješ eure na račun",
-				text: "Na tvoju adresu stiže EURe — regulirani e-novac, 1:1 s eurom. U eure na poslovnom računu pretvaraš ga preko svog Monerium računa (redeem → SEPA na tvoj IBAN), kad i koliko želiš. MPT to ne radi umjesto tebe; Moneriumove naknade, ako ih tvoj ugovor predviđa, nisu dio MPT cijene.",
+				text: "U tvoj Safe stiže EURe — regulirani e-novac, 1:1 s eurom. U eure na poslovnom računu pretvaraš ga preko svog Monerium računa (redeem → SEPA na tvoj IBAN), kad i koliko želiš. MPT to ne radi umjesto tebe; Moneriumove naknade, ako ih tvoj ugovor predviđa, nisu dio MPT cijene.",
 			},
 			{
 				title: "Povrat kupcu",
@@ -440,7 +440,7 @@ const hr = {
 			},
 			{
 				title: "Knjiženje i porezi",
-				text: "Za svaku uplatu imaš webhook s iznosom, vremenom, imenom i IBAN-om platitelja, a svaki forward ima javni onchain trag. MPT ne izdaje račune i ne fiskalizira. Kako knjižiti e-novac i vrijedi li za tebe fiskalizacija, provjeri sa svojim računovođom.",
+				text: "Za svaku uplatu imaš webhook s iznosom, vremenom, imenom i IBAN-om platitelja, a svaki mint i transfer ima javni onchain trag. MPT ne izdaje račune i ne fiskalizira. Kako knjižiti e-novac i vrijedi li za tebe fiskalizacija, provjeri sa svojim računovođom.",
 			},
 			{
 				title: "Podaci tvojih kupaca",
@@ -448,7 +448,7 @@ const hr = {
 			},
 			{
 				title: "Gas i limiti",
-				text: "Gas za svaki forward plaća MPT. Najviše 10.000 € po intentu; veći limiti po dogovoru (Enterprise).",
+				text: "Mint je Moneriumov; gas za prosljeđivanje uplata bez reference plaća MPT. Najviše 10.000 € po intentu; veći limiti po dogovoru (Enterprise).",
 			},
 		],
 		missingTitle: "Što još nema",
@@ -614,7 +614,7 @@ const hr = {
 				],
 			},
 		],
-		note: "Napomena: MPT rail i checkout intenti rade u produkciji (pay.domovina.ai) s prvim tenantom, ITalk d.o.o.; uključivanje drugih tenanata, Shopify i Gnosis Pay grana iskreno su označeni kao u pripremi. MPT nije licencirana platna usluga — ITalk je non-custodial software provider koji ne prima ni ne drži novac kupaca, a regulirane funkcije (izdavanje e-novca, KYC/KYB) obavlja licencirani izdavatelj (Monerium, EMI / MiCA EMT). Ova stranica nije investicijski ni pravni savjet.",
+		note: "Napomena: MPT rail i checkout intenti rade u produkciji (pay.domovina.ai); jedini tenant s pravim novcem je zasad ITalk d.o.o.; prvi vanjski tenanti, Shopify i Gnosis Pay grana iskreno su označeni kao u pripremi. MPT nije licencirana platna usluga — ITalk je non-custodial software provider koji ne prima ni ne drži novac kupaca, a regulirane funkcije (izdavanje e-novca, KYC/KYB) obavlja licencirani izdavatelj (Monerium, EMI / MiCA EMT). Ova stranica nije investicijski ni pravni savjet.",
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"je proizvod tvrtke ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Hrvatska · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Trgovački sud u Zagrebu · direktor: Matija Stepanić",
@@ -628,12 +628,12 @@ const en: typeof hr = {
 		home: {
 			title: "MPT — the buyer pays from the bank, the money goes straight to the merchant",
 			description:
-				"MPT (Mint Pay Transfer), a product by ITalk d.o.o., orchestrates payments on merchants' Monerium accounts — like RevenueCat, but for SEPA → EURe. The money reaches the merchant in ~12 s and MPT never holds it. The buyer pays MPT nothing.",
+				"MPT (Mint Pay Transfer), a product by ITalk d.o.o., orchestrates payments on merchants' Monerium accounts — like RevenueCat, but for SEPA → EURe. Monerium mints the money straight into the merchant's Safe, MPT reports “paid” in ~12 s and never holds it. The buyer pays MPT nothing.",
 		},
 		flow: {
 			title: "Money flow and simulations — MPT",
 			description:
-				"Every step of an MPT payment: from the buyer's SEPA transfer to the EURe forward to the merchant's address, with measured timings, fees and interactive simulations.",
+				"Every step of an MPT payment: from the buyer's SEPA transfer to the EURe Monerium mints straight into the merchant's Safe, with measured timings, fees and interactive simulations.",
 		},
 		pricing: {
 			title: "Pricing — MPT",
@@ -672,7 +672,7 @@ const en: typeof hr = {
 		title: "The buyer pays from the bank.",
 		titleAccent: "The money goes straight to the merchant.",
 		subtitle:
-			"MPT is what RevenueCat is for in-app subscriptions — only for SEPA payments in EURe. Every merchant has its own Monerium IBAN and Safe; MPT runs the checkout, references, routing, webhooks and live status, and never holds the money.",
+			"MPT is what RevenueCat is for in-app subscriptions — only for SEPA payments in EURe. Every merchant has its own Monerium IBAN and Safe; Monerium mints EURe straight into the merchant's Safe, and MPT runs the checkout, references, payment matching, webhooks and live status — it never holds the money.",
 		ctaPrimary: "Request integration",
 		ctaSecondary: "See the money flow",
 		cardLabel: "Measured in production · October 2026",
@@ -683,7 +683,7 @@ const en: typeof hr = {
 			{ label: "Buyer's fee (SEPA Instant from Revolut)", value: "€0.00" },
 			{ label: "Who holds the money", value: "the merchant" },
 		],
-		cardFootnote: "Monerium reviews the first payment from a new IBAN by hand — from a few minutes to a few hours. First tenant in production: ITalk d.o.o.; further merchants switch on after KYB.",
+		cardFootnote: "Monerium reviews the first payment from a new IBAN by hand — from a few minutes to a few hours. For now the only tenant with real money in production is ITalk d.o.o.; further merchants switch on after Monerium's KYB.",
 	},
 	how: {
 		title: "An orchestrator, not an intermediary",
@@ -700,7 +700,7 @@ const en: typeof hr = {
 			{
 				aspect: "What the orchestrator does",
 				rc: "subscription status, entitlements, webhooks",
-				mpt: "checkout intents, references, routing, webhooks, live status",
+				mpt: "checkout intents, references, payment matching, webhooks, live status",
 			},
 			{ aspect: "Integration", rc: "one SDK for both stores", mpt: "one API for every Monerium account (tenant)" },
 			{ aspect: "Price", rc: "free up to $2,500 a month, then 1%", mpt: "free up to €2,500 a month, then 1%" },
@@ -708,7 +708,7 @@ const en: typeof hr = {
 		cards: [
 			{
 				title: "An own Monerium account per merchant",
-				text: "Every tenant has its own KYB, IBAN, Safe (a 2/3 multisig) and list of approved addresses. Money that lands on merchant X's IBAN can only end up at merchant X's addresses — the check is fail-closed, and the forward goes through a Zodiac Roles role that may only call EURe.transfer.",
+				text: "Every tenant has its own KYB, IBAN, main Safe (a 2/3 multisig) and project Safes linked to its Monerium profile. Monerium mints straight into the Safe in the reference; a payment without a reference may be forwarded by the ProjectRouter role only to project Safes the owners approved — enforced onchain by Zodiac Roles, not by MPT's code.",
 			},
 			{
 				title: "One integration, the same business logic",
@@ -716,7 +716,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "Built for real-world payments",
-				text: "A payment without a reference is matched to an intent by amount and time, an underpayment never becomes “paid”, and every forward that fails ends up as an alert — never silently. An intent is marked paid only once; any extra payment still reaches the merchant and is reported by webhook.",
+				text: "A payment without a reference is matched to an intent by amount and time or a short code, an underpayment never becomes “paid”, and every payment the rail can't resolve ends up as an alert — never silently. An intent is marked paid only once; any extra payment still reaches the merchant and is reported by webhook.",
 			},
 			{
 				title: "Open source — run your own MPT",
@@ -727,12 +727,12 @@ const en: typeof hr = {
 	integrate: {
 		title: "Integration in three steps",
 		subtitle:
-			"Your backend creates an intent, the buyer pays from the bank, and you get a webhook once the money is at your address. Public API docs are in the works — until then we do the integration together.",
+			"Your backend creates an intent, the buyer pays from the bank, Monerium mints into your Safe, and you get a webhook once the money is there. Public API docs are in the works — until then we do the integration together.",
 		steps: [
 			{
 				num: "01",
 				title: "Create an intent",
-				text: "Send the amount and one of your approved addresses. You get a reference, an EPC QR, a checkout page and a live-status URL.",
+				text: "Send the amount and a project Safe linked to your Monerium account. You get a reference (and a short code), an EPC QR, a checkout page and a live-status URL.",
 			},
 			{
 				num: "02",
@@ -742,7 +742,7 @@ const en: typeof hr = {
 			{
 				num: "03",
 				title: "Receive the webhook",
-				text: "intent.paid arrives once the forward is confirmed onchain, ~12 s after the payment. There are also payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked and contribution.sepa.",
+				text: "intent.paid arrives once Monerium has processed the payment and the EURe is in your Safe (in production ~12 s after the payment). There are also payment.received, payment.underpaid, payment.late, payment.rejected, forward.blocked and contribution.sepa.",
 			},
 		],
 		requestTitle: "Request",
@@ -789,11 +789,11 @@ const en: typeof hr = {
 			},
 			{
 				title: "The money is the merchant's",
-				text: "The IBAN and Safe belong to the merchant. MPT may only forward EURe to addresses the merchant has approved, through a Zodiac Roles role that can do nothing but an EURe transfer.",
+				text: "The IBAN and Safes belong to the merchant. MPT has no key that can move money outside the set of Safes the owners approved: the ProjectRouter role may only make an EURe transfer to those Safes, enforced onchain by Zodiac Roles.",
 			},
 			{
 				title: "Verifiable",
-				text: "The code is open (MIT), every forward is publicly visible onchain, and we publish the state of the system without embellishment — below.",
+				text: "The code is open (MIT), every mint and transfer is publicly visible onchain, and we publish the state of the system without embellishment — below.",
 			},
 		],
 	},
@@ -805,7 +805,7 @@ const en: typeof hr = {
 			{
 				num: "01",
 				title: "The buyer pays from their own bank",
-				text: "The cheapest path: using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the buyer tops up Revolut (min. €10, a Revolut product limit), then scans the EPC QR at checkout and sends a SEPA Instant (min. €1) — Revolut pays both the card and the SEPA transaction, the buyer pays €0. Paying straight from a classic Croatian bank works too, but then the buyer pays their bank's order fee. The reference says who the money is for: mpt:0x<merchant>?sid=<intent>.",
+				text: "The cheapest path: using a Croatian bank debit card (PBZ, ZABA, OTP, Erste, HPB…) via Apple Pay or Google Pay, the buyer tops up Revolut (min. €10, a Revolut product limit), then scans the EPC QR at checkout and sends a SEPA Instant (min. €1) — Revolut pays both the card and the SEPA transaction, the buyer pays €0. Paying straight from a classic Croatian bank works too, but then the buyer pays their bank's order fee. The reference tells Monerium which Safe to mint into: gnosis:0x<merchant Safe> sid:<intent>.",
 			},
 			{
 				num: "02",
@@ -814,19 +814,19 @@ const en: typeof hr = {
 			},
 			{
 				num: "03",
-				title: "EURe mint and forward to the merchant — €0",
-				text: "Monerium mints EURe 1:1 to the merchant's Safe (a 2/3 multisig) on Gnosis Chain — a median 9 s after the payment. The MPT backend (Cloudflare Workers) forwards through the Zodiac Roles module (the role may only call EURe.transfer) to the address in the reference — fail-closed, to that merchant's approved addresses only; MPT's router pays the gas. The intent flips to “paid” on onchain confirmation, ~12 s after the payment, and the merchant gets a webhook.",
+				title: "Monerium mints straight into the merchant's Safe — €0",
+				text: "Monerium mints EURe 1:1 straight into the merchant's or project's Safe named in the reference, on Gnosis Chain — a median 9 s after the payment. That Safe must be linked to the merchant's Monerium profile. MPT never touches the money: once Monerium reports the payment processed, the intent flips to “paid” and the merchant gets a signed webhook — in production ~12 s after the payment.",
 			},
 			{
 				num: "04",
 				title: "If the reference gets lost — the money still arrives",
-				text: "When the reference is missing (Revolut iOS sometimes drops it from the QR code), the resolver links the payment to an open intent of the same merchant by exact amount and time: if the candidate is unambiguous, the forward runs automatically; otherwise the money stays parked in the merchant's Safe until an operator reroutes it by hand. A payment smaller than the intent never becomes “paid”.",
+				text: "When the reference is missing (after scanning the QR code Revolut often drops the description), Monerium mints to the merchant's main Safe. The resolver links the payment to an open intent of the same merchant by exact amount and time or by the short code: if the candidate is unambiguous, the ProjectRouter role forwards it automatically to the project Safe — only one the owners (2/3) approved, enforced onchain by Zodiac Roles; MPT pays the gas. Otherwise the money stays parked in the main Safe until an operator or the owners link it to the right order. A payment smaller than the intent never becomes “paid”.",
 			},
 		],
 		notes: [
 			{
 				title: "The same rail, other directions too",
-				text: "The same rail also funds a user's own wallet (on-ramp), from which they pay a checkout or make P2P transfers with sponsored gas. The off-ramp goes through an own Monerium account and a free SEPA Instant back to the bank — the circle closes where it started. It's all in the simulations below.",
+				text: "A user funds their own wallet through their own Monerium account (or a campaign's), not through MPT: since 15 Oct 2026 MPT does not forward payments to an arbitrary address. From the wallet they pay a checkout or make P2P transfers with sponsored gas, and the off-ramp goes through the same Monerium account and a free SEPA Instant back to the bank — the circle closes where it began. Since 30 Oct 2026 individuals don't open a Monerium account in Monerium's app but through partners. It's all in the simulations below.",
 			},
 			{
 				title: "Alternative branch: Gnosis Pay VISA (in preparation)",
@@ -850,29 +850,29 @@ const en: typeof hr = {
 				"Checkout intents with an EPC QR code — up to €10,000 per intent, valid 15 min by default, 24 h at most",
 				"“Received” right away and live status over SSE (since 5 Oct 2026)",
 				"Signed merchant webhooks (received · paid · underpaid · late · rejected · blocked · campaigns) with a durable outbox",
-				"Payments without a reference: automatic matching to an intent (since 8 Oct 2026)",
-				"Payouts only to the tenant's approved addresses — fail-closed (since 1 Aug 2026)",
-				"Safe monitoring: an alert for every outflow that isn't an MPT forward",
+				"Direct mint: Monerium mints into the merchant's or project's Safe from the reference, and MPT has no key that can move money out of it (since 15 Oct 2026)",
+				"Payments without a reference: automatic matching to an intent (since 8 Oct 2026), a short intent code (since 20 Oct 2026) and forwarding by the ProjectRouter role only to project Safes the owners approved (since 19 Oct 2026)",
+				"Multi-tenant rail switched on: every tenant has its own Monerium account and rail; for now the only tenant with real money is ITalk d.o.o.",
+				"Safe monitoring: an alert for every outflow the rail didn't start itself",
 				"Independent code reviews with findings resolved, and CI on every PR",
 			],
 		},
 		prep: {
 			title: "In preparation",
 			items: [
-				"Further tenants with their own Monerium account — the multi-tenant rail works (a sandbox test tenant was connected on 9 Oct 2026) and goes live with the first merchant to complete KYB",
+				"The first external merchant with its own Monerium account — the rail is ready, waiting for a merchant to complete Monerium's KYB",
 				"Shopify: MPT as a payment method with a QR code — the app is written, release and the first test on a real store are upcoming",
 				"WooCommerce — planned",
 				"Public API documentation",
 				"Gnosis Pay VISA branch — pre-pilot",
-				"Signing forwards outside the cloud (an M-of-N device quorum) — proposal",
 			],
 		},
 		limits: {
 			title: "Known limitations",
 			items: [
 				"Monerium holds the first payment from a new IBAN for manual review — from a few minutes to several hours. Later payments from the same IBAN clear in seconds.",
-				"Revolut iOS sometimes drops the reference from the QR code — the resolver covers this when the candidate is unambiguous; otherwise an operator reroutes the payment by hand.",
-				"A SEPA recall after the EURe has already been forwarded is not automated.",
+				"After a QR scan Revolut often drops the reference — the resolver and the short code cover that when the candidate is unambiguous; otherwise an operator or the Safe's owners link the payment by hand.",
+				"A SEPA recall after the EURe has already been minted is not automated.",
 			],
 		},
 	},
@@ -889,7 +889,7 @@ const en: typeof hr = {
 				features: [
 					"Every feature: checkout intents, EPC QR, live status, webhooks",
 					"Payments without a reference — automatic intent matching",
-					"MPT pays the forward gas",
+					"MPT pays the gas for forwarding payments without a reference",
 					"Your own Monerium IBAN and Safe — the money is always yours",
 				],
 				cta: "Request integration",
@@ -938,7 +938,7 @@ const en: typeof hr = {
 			},
 			{
 				q: "Does MPT take a cut out of the payment itself?",
-				a: "No. The full amount reaches your address; the fee is billed separately, monthly, under the contract.",
+				a: "No. The full amount reaches your Safe; the fee is billed separately, monthly, under the contract.",
 			},
 			{
 				q: "What if I go over €2,500 one month and not the next?",
@@ -961,7 +961,7 @@ const en: typeof hr = {
 			"Everything a merchant asks before integrating: what you need, how onboarding works and what MPT does in every case that isn't a perfect payment. The behaviour described here is what the code does today, not a plan.",
 		onboardingTitle: "Onboarding",
 		onboardingSubtitle:
-			"How long it takes depends mostly on Monerium's KYB. We do the technical part together, and MPT pays and tops up the gas for forwards itself — you don't have to think about it.",
+			"How long it takes depends mostly on Monerium's KYB. We do the technical part together, and MPT pays and tops up the gas for forwarding payments without a reference itself — you don't have to think about it.",
 		onboarding: [
 			{
 				num: "01",
@@ -970,13 +970,13 @@ const en: typeof hr = {
 			},
 			{
 				num: "02",
-				title: "A Safe and approved addresses",
-				text: "Your Safe (2 of 3 signatures) receives the EURe from your IBAN. You list the addresses MPT may forward money to — yours only.",
+				title: "A main Safe and project Safes",
+				text: "The main Safe (2 of 3 signatures) is the Monerium default wallet of your account. Every project or shop has a Safe linked to your Monerium profile — Monerium mints straight into it, by reference.",
 			},
 			{
 				num: "03",
 				title: "One signature",
-				text: "You sign one transaction on the Safe that gives MPT a role: an EURe transfer only, to your addresses only, up to an agreed limit. You can revoke it whenever you want.",
+				text: "For payments without a reference, the main Safe's owners (2 of 3) sign the ProjectRouter role: an EURe transfer only, to your project Safes only. Zodiac Roles enforces that onchain; a new project needs another 2/3 signature, and you can revoke the role whenever you want.",
 			},
 			{
 				num: "04",
@@ -986,12 +986,12 @@ const en: typeof hr = {
 		],
 		casesTitle: "Payments that don't go to plan",
 		casesSubtitle:
-			"Money is never guessed and never lost: it either reaches your address or stays in your Safe until it's resolved. Every outcome is reported by webhook.",
+			"Money is never guessed and never lost: it either reaches the project Safe or stays in your main Safe until it's resolved. Every outcome is reported by webhook.",
 		casesHead: { when: "When…", what: "MPT does", event: "Webhook" },
 		cases: [
 			{
 				when: "The buyer pays the exact amount",
-				what: "“Received” on the checkout ~5 s after the buyer sends the payment, a forward to your address and “paid” ~12 s after the payment.",
+				what: "“Received” on the checkout ~5 s after the buyer sends the payment, Monerium mints straight into the project Safe and “paid” ~12 s after the payment.",
 				event: "payment.received → intent.paid",
 			},
 			{
@@ -1001,27 +1001,27 @@ const en: typeof hr = {
 			},
 			{
 				when: "The reference gets lost",
-				what: "The resolver looks for your open intent with exactly that amount in a time window around the payment. One clear candidate → a normal forward and “paid”. No candidate or conflicting ones → the money stays in your Safe and an operator reroutes it by hand.",
+				what: "Monerium mints to your main Safe. The resolver looks for your open intent with exactly that amount in a time window around the payment, or by the short code. One clear candidate → ProjectRouter forwards it to the project Safe and “paid”. No candidate or conflicting ones → the money stays in the main Safe until an operator or the owners link it to the order.",
 				event: "intent.paid or forward.blocked",
 			},
 			{
 				when: "The buyer pays too little",
-				what: "The money reaches your address, but the intent does not become “paid”. Payments are not added up — you decide what happens to the order (top-up, refund, cancellation).",
+				what: "The money reaches your Safe, but the intent does not become “paid”. Payments are not added up — you decide what happens to the order (top-up, refund, cancellation).",
 				event: "payment.underpaid",
 			},
 			{
 				when: "The buyer pays too much",
-				what: "The intent becomes “paid”, the full amount reaches your address, and the webhook says how much was overpaid. You refund the difference.",
+				what: "The intent becomes “paid”, the full amount reaches your Safe, and the webhook says how much was overpaid. You refund the difference.",
 				event: "intent.paid (overpaid_cents)",
 			},
 			{
 				when: "The buyer pays twice",
-				what: "The intent is paid only once; the second payment still reaches your address and is reported separately. You handle the refund.",
+				what: "The intent is paid only once; the second payment still reaches your Safe and is reported separately. You handle the refund.",
 				event: "payment.received",
 			},
 			{
 				when: "The payment arrives after expiry",
-				what: "The money reaches your address, the intent stays expired, and you get a separate event so you can decide whether to ship the order anyway.",
+				what: "The money reaches your Safe, the intent stays expired, and you get a separate event so you can decide whether to ship the order anyway.",
 				event: "payment.late",
 			},
 			{
@@ -1031,7 +1031,7 @@ const en: typeof hr = {
 			},
 			{
 				when: "The payment isn't in euros",
-				what: "MPT works with EUR only. A payment in another currency is not forwarded automatically; it stays in the Safe to be resolved by hand.",
+				what: "MPT works with EUR only. A payment in another currency is not matched to an intent automatically; it is resolved by hand.",
 				event: "forward.blocked",
 			},
 			{
@@ -1044,7 +1044,7 @@ const en: typeof hr = {
 		money: [
 			{
 				title: "How you get euros into your account",
-				text: "Your address receives EURe — regulated e-money, 1:1 with the euro. You turn it into euros on your business account through your own Monerium account (redeem → SEPA to your IBAN), whenever and as much as you like. MPT doesn't do this for you; Monerium's fees, if your contract has any, are not part of MPT's price.",
+				text: "Your Safe receives EURe — regulated e-money, 1:1 with the euro. You turn it into euros on your business account through your own Monerium account (redeem → SEPA to your IBAN), whenever and as much as you like. MPT doesn't do this for you; Monerium's fees, if your contract has any, are not part of MPT's price.",
 			},
 			{
 				title: "Refunding a buyer",
@@ -1056,7 +1056,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "Bookkeeping and tax",
-				text: "For every payment you have a webhook with the amount, time, and the payer's name and IBAN, and every forward leaves a public onchain trail. MPT doesn't issue invoices or handle fiscalisation. Check with your accountant how to book e-money and whether fiscalisation applies to you.",
+				text: "For every payment you have a webhook with the amount, time, and the payer's name and IBAN, and every mint and transfer leaves a public onchain trail. MPT doesn't issue invoices or handle fiscalisation. Check with your accountant how to book e-money and whether fiscalisation applies to you.",
 			},
 			{
 				title: "Your buyers' data",
@@ -1064,7 +1064,7 @@ const en: typeof hr = {
 			},
 			{
 				title: "Gas and limits",
-				text: "MPT pays the gas for every forward. At most €10,000 per intent; higher limits by agreement (Enterprise).",
+				text: "The mint is Monerium's; MPT pays the gas for forwarding payments without a reference. At most €10,000 per intent; higher limits by agreement (Enterprise).",
 			},
 		],
 		missingTitle: "What isn't there yet",
@@ -1230,7 +1230,7 @@ const en: typeof hr = {
 				],
 			},
 		],
-		note: "Note: the MPT rail and checkout intents run in production (pay.domovina.ai) with the first tenant, ITalk d.o.o.; onboarding further tenants, Shopify and the Gnosis Pay branch are honestly labelled as in preparation. MPT is not a licensed payment service — ITalk is a non-custodial software provider that neither receives nor holds buyers' money, and regulated functions (e-money issuance, KYC/KYB) are performed by a licensed issuer (Monerium, EMI / MiCA EMT). This page is not investment or legal advice.",
+		note: "Note: the MPT rail and checkout intents run in production (pay.domovina.ai); for now the only tenant with real money is ITalk d.o.o.; the first external tenants, Shopify and the Gnosis Pay branch are honestly labelled as in preparation. MPT is not a licensed payment service — ITalk is a non-custodial software provider that neither receives nor holds buyers' money, and regulated functions (e-money issuance, KYC/KYB) are performed by a licensed issuer (Monerium, EMI / MiCA EMT). This page is not investment or legal advice.",
 		imprintLead: "MPT (Mint Pay Transfer)",
 		imprint:
 			"is a product of ITalk d.o.o. za informacijske tehnologije · IX. Južna obala 20, 10000 Zagreb, Croatia · OIB: 54872935051 · MBS: 081042440 · EUID: HRSR.081042440 · Commercial Court in Zagreb · director: Matija Stepanić",

@@ -3,11 +3,21 @@
 Landing za **MPT (Mint Pay Transfer)**, live na **https://mpt.hr**. Pozicioniran kao
 **proizvod tvrtke ITalk d.o.o.** (isti nastup kao airkuna.com).
 
-**Pozicioniranje (Matija, 2026-10-10):** MPT je **orkestrator za više Monerium računa
-(tenanata) — „RevenueCat za SEPA → EURe"**, poslovna logika ista kao RevenueCat za IAP.
-Glavna stvar je **plaćanje izravno trgovcu**: kupac plaća iz banke (SEPA s referencom
-`mpt:0x<trgovac>?sid=<intent>`), novac stiže na Monerium IBAN/Safe trgovca, forward ide
-na njegovu odobrenu adresu; MPT ne prima i ne drži novac. Kod je otvoren (MIT,
+**Pozicioniranje (Matija, 2026-10-10; model od 15. 10. 2026., ADR 0025/0026):** MPT je
+**orkestrator i notification servis za više Monerium računa (tenanata) — „RevenueCat za
+SEPA → EURe"**, poslovna logika ista kao RevenueCat za IAP. Glavna stvar je **plaćanje
+izravno trgovcu**: kupac plaća iz banke (SEPA s referencom `gnosis:0x<Safe> sid:<intent>`)
+na Monerium IBAN trgovca, a **Monerium minta EURe izravno u Safe trgovca/projekta** iz
+reference (način `direct`). MPT uparuje uplatu s intentom i javlja je (zaprimljeno → paid,
+potpisani webhook s outboxom, SSE, potvrda o uplati) — UX kao kartica na POS-u, a iz obične
+SEPA uplate. **Nikad ne pisati da MPT minta, dovodi ili prosljeđuje novac kao svoju
+funkciju**; MPT ne prima i ne drži novac i nema ključ koji ga može pomaknuti izvan skupa
+Safe-ova koje su vlasnici odobrili. Uplata bez reference (Revolut nakon QR-a briše opis)
+minta se na glavni Safe tenanta; stray resolver (ADR 0018) ili kratki kod (ADR 0028) je
+veže uz intent, a rola **ProjectRouter** (ADR 0026) je prosljeđuje samo na projektni Safe
+iz skupa koji su 2/3 vlasnika odobrili (Zodiac Roles na lancu, bez kapice na iznos).
+Forwarda na proizvoljnu korisnikovu adresu više nema; vlastiti wallet se puni preko
+vlastitog Monerium računa (osobe od 30. 10. 2026. preko partnera, npr. Bleap). Kod je otvoren (MIT,
 github.com/domovinatv/pay.domovina.ai) — tko želi, pokrene vlastiti MPT. Kupac MPT-u
 plaća 0 € (0 € ukupno samo na Revolut putu — iz klasične HR banke plaća nalog svojoj banci,
 landing to mora reći, ne tvrditi „0 € iz bilo koje banke").
@@ -39,10 +49,10 @@ matcher (preusmjerenje rute bez jezika). `sitemap.ts` i hreflang (s `x-default`)
 izvode iz `pagePaths`; `robots.ts` upućuje na sitemap. `public/funding.json` je FLOSS/fund manifest (ITalk, Monerium IBAN; plan grantova u privatnom `bizops-automation/funding/`) — ažurirati opis kad se promijeni stanje u `#status`. OG slika je statični `public/og.png`, izvor je `docs/brand/og.svg`
 (`rsvg-convert -w 1200 -h 630 docs/brand/og.svg -o public/og.png`). Znak (M pločica) je isti u
 `public/favicon.svg`, `Logo()` u `site.tsx` i mediakitu (`mpt_logo_square.svg`); mijenjaj sva tri skupa.
-Iskreno o stanju: multi-tenant rail (ADR 0017) je u produkcijskom kodu ali isključen
-(`MULTI_TENANT_RAIL=0`) dok prvi vanjski tenant ne završi KYB — ITalk je jedini aktivni
-tenant. Sekcija `#status` (u produkciji / u pripremi / poznata ograničenja) mora se
-ažurirati kad se to promijeni.
+Iskreno o stanju: multi-tenant rail (ADR 0017) je uključen (`MULTI_TENANT_RAIL = "1"`,
+tenanti u D1), ali ITalk je jedini tenant s pravim novcem dok prvi vanjski trgovac ne
+završi Moneriumov KYB. Sekcija `#status` (u produkciji / u pripremi / poznata ograničenja)
+mora se ažurirati kad se to promijeni.
 Footer nosi airkuna-stil impresum (ITalk d.o.o., OIB 54872935051, adresa, direktor —
 podaci preuzeti doslovno s airkuna.com footera, ne izmišljati) i poštenu napomenu:
 MPT **nije licencirana platna usluga** — ITalk je non-custodial software provider,
@@ -72,14 +82,22 @@ Invarijante koje testovi dokazuju: korisnik plaća 0 € u svakom koraku; iznosi
 1:1 (zbroj salda konstantan); salda nikad negativna; guardovi (min/max) odbijaju bez
 pomicanja novca; scenariji su subsetovi punog grafa (`scenarioSubset()`).
 
-Scenarij 1 (zadani) je `sepa-checkout` (kupac → trgovac iz banke), 2 je `stray` (uplata
-bez reference, ADR 0018), 3 `parked` (resolver ne nađe kandidata → parkirano, operater
-preusmjeri), 4 `underpaid` (novac stigne, intent ne postaje paid). Test provjerava da je
-merchant tok prvi.
+Scenarij 1 (zadani) je `sepa-checkout` (kupac → trgovac iz banke, Monerium minta izravno
+u Safe trgovca, `mintEure` `moneriumMpt` → `merchant`), 2 je `stray` (uplata bez reference:
+`mintToMainSafe` na glavni Safe `safeRelayer` → resolver → ProjectRouter `forwardToPayee`),
+3 `parked` (resolver ne nađe kandidata → parkirano na glavnom Safeu, operater veže uz
+narudžbu), 4 `underpaid` (novac stigne, intent ne postaje paid). Scenariji 5–9 (vlastiti
+wallet, puni krug, P2P, checkout iz walleta, GP) idu preko vlastitog Monerium računa
+(`sepaToOwnMonerium` → `mintToOwnAddress`), ne preko MPT-a. Test provjerava da je merchant
+tok prvi i da nijedan prijelaz ne pomiče novac s IBAN-a/Safea trgovca na korisnikovu adresu.
+ID čvora `safeRelayer` je povijesni — danas je to glavni Safe tenanta.
 
 Graf je **zatvoreni krug**: jedan čvor `bank` je i početak i kraj (bilo koja banka s
 IBAN-om u eurozoni; prikazujemo hrvatske). Povratne veze: off-ramp preko vlastitog
 Monerium računa natrag u banku, i Gnosis Pay VISA → Revolut (besplatni kartični top-up).
+Desktop raspored (`H_POS`/`H_ROUTE` u `FlowDiagram.tsx`): srednji red je checkout rail s
+izravnim mintom, glavni Safe je iznad njega kao zaobilaznica za uplate bez reference,
+donji red je vlastiti wallet.
 
 ## Istina o mehanizmu — gdje se provjerava
 
@@ -91,13 +109,17 @@ Monerium računa natrag u banku, i Gnosis Pay VISA → Revolut (besplatni karti�
 - `docs/plans/gnosis-pay-cards/` — Gnosis Pay integracija (Two-Safe model, Delay+Roles,
   Sumsub KYC, statusi). **GP grana je pre-pilot PLAN, ne produkcija** — landing to mora
   jasno reći dok se ne promijeni.
-- `backend/` — worker `pay-domovina-backend`: `monerium/sid.ts` (parser reference
-  `mpt:0x<addr>?sid=<id>`, i `gnosis:`/`cmp:`/goli `0x`; SEPA mapira `=`→`.`),
-  `router/safe.ts` (Zodiac Roles forward, rola EUReForwarder, router EOA plaća gas),
-  `intents/` (pending→paid na onchain potvrdi→expired; >0 € i ≤10.000 €, TTL 15 min)
+- `docs/decisions/` — ADR 0025 (router umirovljen, svi tenanti `direct`), 0026
+  (ProjectRouter), 0018 (stray resolver), 0028 (kratka referenca), 0017 (multi-tenant)
+- `backend/` — worker `pay-domovina-backend`: `tenants/rail.ts` (referenca
+  `gnosis:<Safe> sid:<sid>`), `monerium/sid.ts` (parser; tolerira i `?sid=`, stare `mpt:`
+  reference idu kao D4 dug), `tenants/whitelist.ts` (direct gate: `direct_settle` /
+  `direct_owed`), `monerium/forward.ts` (ProjectRouter za D4 dugove, reroute),
+  `intents/` (pending→paid→expired; >0 € i ≤10.000 €, TTL 15 min; `short_ref`)
 
 Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
-- "mpt-main-rail" = **Safe multisig 2/3** (`0x449a…`, Moneriumov default wallet), ne Worker
+- "mpt-main-rail" = **Safe multisig 2/3** (`0x449a…`, Moneriumov default wallet), ne Worker;
+  od 15. 10. 2026. tamo stižu samo uplate bez reference (i stare `mpt:` reference)
 - minimumi 10 € (kartični top-up) i 1 € (SEPA) su **Revolutova produktna pravila**, ne MPT kod
 - uplata bez reference **nije automatski parkirana**: od 8. 10. 2026. stray resolver
   (ADR 0018) je poveže s intentom istog tenanta po točnom iznosu i vremenu; parkira se
@@ -106,12 +128,16 @@ Ključne činjenice koje su ranije bile krivo modelirane (ne ponavljati):
   first-iban-screening.md`): „zaprimljeno" 0 s od placedAt (~5 s od „Pošalji"), ~12 s do
   `paid`, Monerium placed→processed medijan 9 s / p95 26 s; prva uplata s novog IBAN-a
   ručni pregled minute–sati
-- ograničenje primatelja: landing tvrdi samo „rola smije samo EURe.transfer“ + fail-closed
-  provjera u kodu, **ne** „onchain ograničeno na adrese trgovca“ — prije nego to napišeš,
-  provjeri status ADR 0016 u pay.domovina.ai
-- dvostruka uplata s istom referencom se ponovno forwarda (samo `payment.received`) — ne
-  pisati „intent se ne može platiti dvaput“
-- gas za routere hostanih tenanata puni MPT (Matija, 10. 10. 2026.) — „gas plaća MPT“ vrijedi
+- ograničenje primatelja: rola ProjectRouter je **onchain** ograničena (Zodiac Roles
+  `Or(EqualTo…)`) na projektne Safe-ove koje su 2/3 vlasnika odobrili (ADR 0026, produkcija
+  19. 10. 2026.), bez kapice na iznos; stara rola `EUReForwarder` i router ključ su
+  umirovljeni 15. 10. (ADR 0025) — spominjati ih samo povijesno
+- dvostruka uplata s istom referencom ponovno se minta u Safe trgovca (samo
+  `payment.received`) — ne pisati „intent se ne može platiti dvaput“
+- gas za ProjectRouter puni MPT — „gas plaća MPT“ vrijedi samo za uplate bez reference;
+  izravni mint je Moneriumov
+- krađa Cloudflare ključeva (postmortem 0002) od ADR 0025 više ne znači krađu novca, nego
+  lažne obavijesti ili isplatu u pogrešan od vlastitih projekata (ADR 0026)
 - Moneriumova suglasnost za javni opis integracije (API ToS §4) nije potrebna (Matija)
 - **oba repoa (mpt-landing i pay.domovina.ai) su javna** — i `docs/` ovdje je javno
 - ne objavljivati javno sigurnosne rupe iz reviewa (npr. Roles scoping, WAF) — `#status`
@@ -218,7 +244,7 @@ prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik keš
   intent/webhook logike u pay.domovina.ai provjeriti tablicu „što se dogodi kad…“
 - ESLint konfiguracija je pokvarena (`npx eslint src` puca na circular config) — niski
   prioritet
-- kad se uključi prvi vanjski tenant (`MULTI_TENANT_RAIL=1`), Shopify prođe prvi test
-  ili GP izađe iz pre-pilota → ažurirati `status` u dictionaries + machine
+- kad prvi vanjski tenant krene s pravim novcem, Shopify prođe prvi test ili GP izađe iz
+  pre-pilota → ažurirati `status` u dictionaries + machine
 - naplata MPT naknade (1% iznad 2.500 €/mj.) nije implementirana u backendu — tehnički
   je danas 0 %, svjesno; rješava se kasnije. Landing svejedno piše 1 % (Matija)

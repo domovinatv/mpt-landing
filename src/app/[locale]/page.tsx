@@ -153,7 +153,8 @@ const requestSnippet = (orderLabel: string) => `curl -X POST https://pay.domovin
 
 → {
   "sid": "k7q2m9",
-  "memo": "mpt:0x9f2c…e41a?sid=k7q2m9",
+  "memo": "gnosis:0x9f2c…e41a sid:k7q2m9",
+  "short_ref": "0071",
   "iban": "…",
   "epc_qr_data": "BCD\\n002\\n1\\nSCT…",
   "checkout_url": ".../checkout/k7q2m9",

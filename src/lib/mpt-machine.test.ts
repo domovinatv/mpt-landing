@@ -37,13 +37,19 @@ describe("machine consistency", () => {
 		const onramp = scenarioSubset(scenarios.find((s) => s.id === "onramp")!);
 		expect(onramp.nodes.has("gnosisPay")).toBe(false);
 		expect(onramp.nodes.has("merchant")).toBe(false);
-		expect(onramp.nodes.has("ownMonerium")).toBe(false);
+		// since ADR 0025 the own wallet is funded through an own Monerium account,
+		// never through a merchant's IBAN or Safe
+		expect(onramp.nodes.has("ownMonerium")).toBe(true);
+		expect(onramp.nodes.has("moneriumMpt")).toBe(false);
+		expect(onramp.nodes.has("safeRelayer")).toBe(false);
+		expect(onramp.edges.has("e-redeem")).toBe(false);
 		expect(onramp.edges.has("e-gp-revolut")).toBe(false);
 
 		const gp = scenarioSubset(scenarios.find((s) => s.id === "gnosis-pay")!);
 		expect(gp.nodes.has("gnosisPay")).toBe(true);
 		expect(gp.edges.has("e-gp-revolut")).toBe(true);
-		expect(gp.nodes.has("ownMonerium")).toBe(false);
+		expect(gp.edges.has("e-redeem")).toBe(false);
+		expect(gp.edges.has("e-offramp")).toBe(false);
 
 		const fullCircle = scenarioSubset(scenarios.find((s) => s.id === "full-circle")!);
 		expect(fullCircle.nodes.has("bank")).toBe(true);
@@ -96,8 +102,9 @@ describe("guard limits", () => {
 	it("valid amounts still complete the full rail afterwards", () => {
 		const last = steps.at(-1)!;
 		expect(last.status).toBe("ok");
-		expect(last.location).toBe("userAddress");
-		expect(last.balances.userAddress).toBe(10);
+		// the full rail now ends with Monerium's direct mint into the merchant's Safe
+		expect(last.location).toBe("merchant");
+		expect(last.balances.merchant).toBe(10);
 	});
 });
 
@@ -116,21 +123,55 @@ describe("terminal states", () => {
 		expect(last.balances.userAddress).toBe(onramp.initialAmount);
 	});
 
-	it.each(["sepa-checkout", "stray"])(
-		"%s pays the merchant directly from the tenant's Safe — the buyer never holds EURe",
-		(id) => {
-			const scenario = scenarios.find((s) => s.id === id)!;
-			const steps = simulate(scenario);
-			const last = steps.at(-1)!;
-			expect(last.location).toBe("merchant");
-			expect(last.balances.merchant).toBe(scenario.initialAmount);
-			expect(last.transition.id).toBe("forwardToPayee");
-			const subset = scenarioSubset(scenario);
-			expect(subset.nodes.has("userAddress")).toBe(false);
-			expect(subset.edges.has("e-forward")).toBe(true);
-			expect(subset.edges.has("e-checkout")).toBe(false);
-		},
-	);
+	it("sepa-checkout: Monerium mints straight into the merchant's Safe — no forward, the buyer never holds EURe", () => {
+		const scenario = scenarios.find((s) => s.id === "sepa-checkout")!;
+		const steps = simulate(scenario);
+		const last = steps.at(-1)!;
+		expect(last.location).toBe("merchant");
+		expect(last.balances.merchant).toBe(scenario.initialAmount);
+		expect(last.transition.id).toBe("mintEure");
+		expect(last.transition.feePayer).toBe("monerium");
+		const subset = scenarioSubset(scenario);
+		expect(subset.nodes.has("userAddress")).toBe(false);
+		expect(subset.nodes.has("safeRelayer")).toBe(false);
+		expect(subset.edges.has("e-mint")).toBe(true);
+		expect(subset.edges.has("e-forward")).toBe(false);
+		expect(subset.edges.has("e-checkout")).toBe(false);
+	});
+
+	it("stray pays the merchant from the tenant's main Safe via ProjectRouter — the buyer never holds EURe", () => {
+		const scenario = scenarios.find((s) => s.id === "stray")!;
+		const steps = simulate(scenario);
+		const last = steps.at(-1)!;
+		expect(last.location).toBe("merchant");
+		expect(last.balances.merchant).toBe(scenario.initialAmount);
+		expect(last.transition.id).toBe("forwardToPayee");
+		const subset = scenarioSubset(scenario);
+		expect(subset.nodes.has("userAddress")).toBe(false);
+		expect(subset.edges.has("e-forward")).toBe(true);
+		expect(subset.edges.has("e-mint-main")).toBe(true);
+		expect(subset.edges.has("e-mint")).toBe(false);
+		expect(subset.edges.has("e-checkout")).toBe(false);
+	});
+
+	it("no transition moves money from a merchant's IBAN or Safe to a user's address (ADR 0025)", () => {
+		for (const t of transitions) {
+			if (!t.movesMoney) continue;
+			if (t.from === "moneriumMpt" || t.from === "safeRelayer") {
+				expect(t.to).not.toBe("userAddress");
+				expect(t.to).not.toBe("otherAddress");
+			}
+		}
+	});
+
+	it("the main Safe only pays out to a merchant / project Safe, with MPT paying the gas", () => {
+		const outflows = transitions.filter((t) => t.movesMoney && t.from === "safeRelayer");
+		expect(outflows.length).toBeGreaterThan(0);
+		for (const t of outflows) {
+			expect(t.to).toBe("merchant");
+			expect(t.feePayer).toBe("mpt");
+		}
+	});
 
 	it("a payment without a reference is resolved before it is forwarded", () => {
 		const stray = simulate(scenarios.find((s) => s.id === "stray")!);
@@ -184,14 +225,10 @@ describe("terminal states", () => {
 			description: { hr: "test", en: "test" },
 			initialAmount: 20000,
 			steps: [
+				{ t: "openMoneriumKyc" as const },
 				{ t: "cardTopup" as const, amount: 20000 },
-				{ t: "scanEpcQr" as const },
-				{ t: "confirmAllowlist" as const },
-				{ t: "revolutInternalCheck" as const },
-				{ t: "sepaToMonerium" as const, amount: 20000 },
-				{ t: "moneriumVerify" as const },
-				{ t: "mintEure" as const, amount: 20000 },
-				{ t: "relaySponsoredTx" as const, amount: 20000 },
+				{ t: "sepaToOwnMonerium" as const, amount: 20000 },
+				{ t: "mintToOwnAddress" as const, amount: 20000 },
 				{ t: "payCheckoutIntent" as const, amount: 10001 },
 				{ t: "payCheckoutIntent" as const, amount: 10000 },
 			],

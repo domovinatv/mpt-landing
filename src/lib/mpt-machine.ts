@@ -10,36 +10,49 @@ import type { Locale } from "@/i18n/config";
  *
  * Verified against the reference implementation and its vendored docs:
  *  - pay.domovina.ai `docs/monerium-private.md` (Monerium Private API SSOT)
+ *  - pay.domovina.ai `docs/decisions/0025-*` (router retired, every tenant in
+ *    `direct` mode), `0026-*` (ProjectRouter), `0018-*` (stray resolver),
+ *    `0028-*` (short intent reference)
  *  - pay.domovina.ai `docs/plans/gnosis-pay-cards/` (Gnosis Pay integration plan)
  *  - pay.domovina.ai `backend/` (worker `pay-domovina-backend`: webhook receiver,
- *    reference parser `monerium/sid.ts`, Zodiac forward `router/safe.ts`,
+ *    reference builder `tenants/rail.ts`, parser `monerium/sid.ts`, direct gate
+ *    `tenants/whitelist.ts`, forward/owed handling `monerium/forward.ts`,
  *    payment intents `intents/`)
  *
- * Positioning: MPT is an orchestrator for many Monerium accounts (tenants) —
- * the RevenueCat of SEPA → EURe. Each merchant (tenant) has its own Monerium
- * account + KYB, IBAN, Safe and payout whitelist; MPT holds no money, it runs the
- * business logic (intents, references, routing, webhooks, live status).
- * Multi-tenant rail (ADR 0017) is in production code but switched off until the
- * first external tenant finishes KYB; ITalk d.o.o. is tenant #1 (Safe 0x449a…).
+ * Positioning: MPT is an orchestrator and notification service for many
+ * Monerium accounts (tenants) — the RevenueCat of SEPA → EURe. Each merchant
+ * (tenant) has its own Monerium account + KYB, IBAN, main Safe and project
+ * Safes linked to its Monerium profile. Monerium mints; MPT matches the payment
+ * to an intent and reports it (received → paid, signed webhook with an outbox,
+ * SSE live status, payment receipt). MPT holds no money and has no key that can
+ * move EURe outside the set of Safes the owners approved. Multi-tenant rail
+ * (ADR 0017) is on (`MULTI_TENANT_RAIL = "1"`, tenants in D1); ITalk d.o.o.
+ * is the only production tenant with real money (main Safe 0x449a…, 2/3).
  *
- * Modeled rails:
- *  main rail   : HR bank -> (card, Apple/Google Pay, min 10 € Revolut product
- *                limit, card tx paid by Revolut) -> Revolut LT IBAN
- *                -> (SEPA Instant, EPC QR, allowlist prompt, min 1 € Revolut
- *                product limit, paid by Revolut, reference `mpt:0x<addr>?sid=<id>`)
- *                -> Monerium EE IBAN (issue order: placed -> pending -> processed)
- *                -> 1:1 EURe mint to the tenant's Safe (2/3 multisig,
- *                Monerium default wallet) -> backend worker `pay-domovina-backend`
- *                forwards via the Zodiac Roles module (EUReForwarder role,
- *                constrained router EOA pays gas) -> user address
- *  checkout    : the SAME rail with the payee's address in the reference
- *                (`mpt:0x<payee>?sid=<intent>`): the Safe forwards straight to
- *                the merchant (fail-closed payout whitelist, ADR 0016); the
- *                intent flips paid on onchain confirmation; checkout already
- *                shows "received" on Monerium's order.created (ADR 0018, 0 s
- *                from placedAt). An empty reference is matched to an open
- *                intent by tenant + exact amount + time (stray resolver,
- *                ADR 0018), otherwise parked for the operator.
+ * Modeled rails (since 15 Oct 2026, ADR 0025):
+ *  checkout    : HR bank -> (card, Apple/Google Pay, min 10 € Revolut product
+ *                limit, paid by Revolut) -> Revolut LT IBAN -> (SEPA Instant,
+ *                EPC QR, min 1 € Revolut product limit, paid by Revolut,
+ *                reference `gnosis:0x<project Safe> sid:<sid>`) -> the tenant's
+ *                Monerium IBAN (issue order placed -> pending -> processed)
+ *                -> Monerium mints EURe 1:1 STRAIGHT into the merchant's /
+ *                project Safe named in the reference (mode `direct`); the
+ *                intent flips paid when Monerium reports the mint processed.
+ *                "Received" fires already on order.created (ADR 0018).
+ *  no reference: Revolut drops the reference after a QR scan -> Monerium mints
+ *                into the tenant's main Safe (its default wallet) -> stray
+ *                resolver (ADR 0018) links it to an intent by tenant + exact
+ *                amount + time, or by the short reference (ADR 0028) -> the
+ *                ProjectRouter role (ADR 0026, Zodiac Roles, enforced onchain:
+ *                EURe.transfer only to project Safes the 2/3 owners approved,
+ *                no amount cap) forwards it; the gas for that key is paid by
+ *                MPT. No unambiguous intent -> parked, owners/operator resolve.
+ *                There is no forward to an arbitrary user address any more.
+ *  own wallet  : a user tops up their own address through their OWN Monerium
+ *                account (Monerium mints to the user's linked address); MPT
+ *                is not in that path. Since 30 Oct 2026 Monerium no longer
+ *                opens individual accounts in its own app — individuals go
+ *                through partners (e.g. Bleap).
  *  after rail  : P2P onchain transfers, wallet-paid checkout intents
  *                (pending -> paid on onchain confirmation | expired;
  *                > 0 € and <= 10 000 € per intent, TTL default 15 min,
@@ -49,7 +62,7 @@ import type { Locale } from "@/i18n/config";
  *  alt branch  : Gnosis Pay VISA (pre-pilot plan): GP deploys its OWN Safe per
  *                user (Two-Safe model, Delay + Roles modules), Sumsub KYC,
  *                virtual card free; funding = plain EURe transfer from the
- *                user's Safe over the existing sponsored rail
+ *                user's Safe over the existing sponsored wallet relayer
  */
 
 export type L10n = Record<Locale, string>;
@@ -82,8 +95,10 @@ export type EdgeId =
 	| "e-card"
 	| "e-sepa"
 	| "e-mint"
-	| "e-relay"
+	| "e-mint-main"
 	| "e-forward"
+	| "e-own-sepa"
+	| "e-own-mint"
 	| "e-p2p"
 	| "e-checkout"
 	| "e-gp-fund"
@@ -110,7 +125,7 @@ export type TransitionId =
 	| "checkoutReceived"
 	| "sepaNoReference"
 	| "mintEure"
-	| "relaySponsoredTx"
+	| "mintToMainSafe"
 	| "strayResolve"
 	| "forwardToPayee"
 	| "strayPark"
@@ -123,6 +138,8 @@ export type TransitionId =
 	| "gnosisPayCardSpend"
 	| "topupRevolutFromGnosisPay"
 	| "openMoneriumKyc"
+	| "sepaToOwnMonerium"
+	| "mintToOwnAddress"
 	| "redeemEure"
 	| "sepaInstantOfframp";
 
@@ -202,20 +219,20 @@ export const nodes: FlowNode[] = [
 		id: "moneriumMpt",
 		title: { hr: "Monerium račun tenanta", en: "Tenant's Monerium account" },
 		subtitle: {
-			hr: "Vlastiti IBAN i KYB trgovca (danas: ITalk d.o.o.) · licencirani EMI · issue order: placed → pending → processed",
-			en: "The merchant's own IBAN and KYB (today: ITalk d.o.o.) · licensed EMI · issue order: placed → pending → processed",
+			hr: "Vlastiti IBAN i KYB trgovca (danas: ITalk d.o.o.) · licencirani EMI · issue order: placed → pending → processed · Monerium minta EURe",
+			en: "The merchant's own IBAN and KYB (today: ITalk d.o.o.) · licensed EMI · issue order: placed → pending → processed · Monerium mints the EURe",
 		},
 		x: 0,
 		y: 460,
 	},
 	{
 		id: "safeRelayer",
-		title: { hr: "Safe tenanta (MPT rail)", en: "Tenant's Safe (MPT rail)" },
+		title: { hr: "Glavni Safe tenanta", en: "Tenant's main Safe" },
 		subtitle: {
-			hr: "2/3 multisig tenanta, Moneriumov default wallet · MPT orkestrira forward kroz Zodiac Roles — samo na odobrene adrese",
-			en: "The tenant's 2/3 multisig, Monerium default wallet · MPT orchestrates the forward via Zodiac Roles — approved addresses only",
+			hr: "2/3 multisig, Moneriumov default wallet — ovdje stižu uplate bez reference · rola ProjectRouter (Zodiac Roles) smije samo EURe.transfer na projektne Safe-ove koje su vlasnici odobrili",
+			en: "A 2/3 multisig, Monerium's default wallet — payments without a reference land here · the ProjectRouter role (Zodiac Roles) may only call EURe.transfer to project Safes the owners approved",
 		},
-		badge: { hr: "MPT rail", en: "MPT rail" },
+		badge: { hr: "Bez reference", en: "No reference" },
 		x: 0,
 		y: 690,
 	},
@@ -223,8 +240,8 @@ export const nodes: FlowNode[] = [
 		id: "userAddress",
 		title: { hr: "Korisnikova Gnosis adresa", en: "User's Gnosis address" },
 		subtitle: {
-			hr: "EURe u samoskrbništvu · onchain transakcije, checkout, kartica ili off-ramp",
-			en: "Self-custodied EURe · onchain transfers, checkout, card or off-ramp",
+			hr: "EURe u samoskrbništvu, punjen preko vlastitog Monerium računa · onchain transakcije, checkout, kartica ili off-ramp",
+			en: "Self-custodied EURe, funded through an own Monerium account · onchain transfers, checkout, card or off-ramp",
 		},
 		badge: { hr: "EURe", en: "EURe" },
 		x: 0,
@@ -243,10 +260,10 @@ export const nodes: FlowNode[] = [
 	},
 	{
 		id: "merchant",
-		title: { hr: "Trgovac / primatelj", en: "Merchant / payee" },
+		title: { hr: "Safe trgovca / projekta", en: "Merchant / project Safe" },
 		subtitle: {
-			hr: "MPT checkout intent (pending → paid → expired) · plaćanje iz banke (forward sa Safea) ili iz walleta · samo odobrene adrese — produkcija: pay.domovina.ai",
-			en: "MPT checkout intent (pending → paid → expired) · paid from a bank (forward from the Safe) or from a wallet · approved addresses only — production: pay.domovina.ai",
+			hr: "Povezan s Monerium profilom tenanta · checkout intent (pending → paid → expired) · iz banke: Monerium minta izravno ovdje · iz walleta: onchain transfer — produkcija: pay.domovina.ai",
+			en: "Linked to the tenant's Monerium profile · checkout intent (pending → paid → expired) · from a bank: Monerium mints straight here · from a wallet: an onchain transfer — production: pay.domovina.ai",
 		},
 		x: 360,
 		y: 920,
@@ -267,8 +284,8 @@ export const nodes: FlowNode[] = [
 		id: "ownMonerium",
 		title: { hr: "Vlastiti Monerium račun", en: "Own Monerium account" },
 		subtitle: {
-			hr: "KYC/KYB · potpisani redeem — EURe natrag u eure 1:1 (≥ 15.000 € traži dokument)",
-			en: "KYC/KYB · signed redeem — EURe back to euros 1:1 (≥ €15,000 needs a document)",
+			hr: "KYC/KYB · vlastiti IBAN: uplata se minta na tvoju adresu · potpisani redeem — EURe natrag u eure 1:1 (≥ 15.000 € traži dokument)",
+			en: "KYC/KYB · own IBAN: a payment is minted to your address · signed redeem — EURe back to euros 1:1 (≥ €15,000 needs a document)",
 		},
 		x: 0,
 		y: 1150,
@@ -294,26 +311,26 @@ export const edges: FlowEdge[] = [
 		source: "revolut",
 		target: "moneriumMpt",
 		label: {
-			hr: "SEPA Instant · EPC QR · referenca mpt:0x…?sid=… · 0 € (plaća Revolut)",
-			en: "SEPA Instant · EPC QR · reference mpt:0x…?sid=… · €0 (Revolut pays)",
+			hr: "SEPA Instant · EPC QR · referenca gnosis:0x<Safe> sid:<intent> · 0 € (plaća Revolut)",
+			en: "SEPA Instant · EPC QR · reference gnosis:0x<Safe> sid:<intent> · €0 (Revolut pays)",
 		},
 	},
 	{
 		id: "e-mint",
 		source: "moneriumMpt",
-		target: "safeRelayer",
+		target: "merchant",
 		label: {
-			hr: "issue order processed · mint EURe 1:1 (medijan 9 s)",
-			en: "issue order processed · 1:1 EURe mint (median 9 s)",
+			hr: "Monerium minta EURe 1:1 izravno u Safe trgovca (medijan 9 s) · MPT javlja paid",
+			en: "Monerium mints EURe 1:1 straight into the merchant's Safe (median 9 s) · MPT reports paid",
 		},
 	},
 	{
-		id: "e-relay",
-		source: "safeRelayer",
-		target: "userAddress",
+		id: "e-mint-main",
+		source: "moneriumMpt",
+		target: "safeRelayer",
 		label: {
-			hr: "Zodiac Roles forward · gas plaća MPT router",
-			en: "Zodiac Roles forward · gas paid by the MPT router",
+			hr: "bez reference: mint na glavni Safe tenanta",
+			en: "no reference: mint to the tenant's main Safe",
 		},
 	},
 	{
@@ -321,8 +338,26 @@ export const edges: FlowEdge[] = [
 		source: "safeRelayer",
 		target: "merchant",
 		label: {
-			hr: "forward izravno trgovcu · referenca mpt:0x<trgovac>?sid=<intent> · ~12 s do paid",
-			en: "forward straight to the merchant · reference mpt:0x<merchant>?sid=<intent> · ~12 s to paid",
+			hr: "ProjectRouter: samo na odobreni projektni Safe · gas plaća MPT",
+			en: "ProjectRouter: approved project Safe only · gas paid by MPT",
+		},
+	},
+	{
+		id: "e-own-sepa",
+		source: "revolut",
+		target: "ownMonerium",
+		label: {
+			hr: "SEPA Instant na vlastiti Monerium IBAN · 0 € (plaća Revolut)",
+			en: "SEPA Instant to an own Monerium IBAN · €0 (Revolut pays)",
+		},
+	},
+	{
+		id: "e-own-mint",
+		source: "ownMonerium",
+		target: "userAddress",
+		label: {
+			hr: "mint EURe 1:1 na vlastitu adresu",
+			en: "1:1 EURe mint to the own address",
 		},
 	},
 	{
@@ -459,10 +494,10 @@ export const transitions: Transition[] = [
 		from: "revolut",
 		to: "moneriumMpt",
 		edge: "e-sepa",
-		label: { hr: "SEPA Instant prema Moneriumu", en: "SEPA Instant to Monerium" },
+		label: { hr: "SEPA Instant na Monerium IBAN trgovca", en: "SEPA Instant to the merchant's Monerium IBAN" },
 		description: {
-			hr: "SEPA Instant na Moneriumov estonski IBAN. U referenci plaćanja piše kamo novac dalje ide: mpt:0x<adresa>?sid=<id> (podržani su i gnosis:0x…, cmp:0x… za kampanje i gola 0x adresa). SEPA charset pretvara '=' u '.', pa parser tolerira oba oblika. Minimum od 1 € je Revolutovo pravilo.",
-			en: "SEPA Instant to Monerium's Estonian IBAN. The payment reference says where the money goes next: mpt:0x<address>?sid=<id> (gnosis:0x…, cmp:0x… for campaigns and a bare 0x address are also supported). The SEPA charset maps '=' to '.', so the parser tolerates both forms. The €1 minimum is a Revolut rule.",
+			hr: "SEPA Instant na Monerium IBAN tenanta (trgovca). U referenci plaćanja piše kamo Monerium minta: gnosis:0x<Safe trgovca ili projekta> sid:<intent>. Uz dugu referencu svaki intent ima i kratki kod od 4 znamenke, za slučaj da banka referencu ispusti. Minimum od 1 € je Revolutovo pravilo.",
+			en: "SEPA Instant to the tenant's (merchant's) Monerium IBAN. The payment reference tells Monerium where to mint: gnosis:0x<merchant or project Safe> sid:<intent>. Besides the long reference every intent has a 4-digit short code, in case the bank drops the reference. The €1 minimum is a Revolut rule.",
 		},
 		feePayer: "revolut",
 		feeNote: { hr: "SEPA transakciju plaća Revolut.", en: "Revolut pays the SEPA transaction." },
@@ -473,7 +508,7 @@ export const transitions: Transition[] = [
 		id: "moneriumVerify",
 		from: "moneriumMpt",
 		to: "moneriumMpt",
-		edge: "e-mint",
+		edge: "e-sepa",
 		label: { hr: "Monerium obrađuje issue order", en: "Monerium processes the issue order" },
 		description: {
 			hr: "Kad SEPA stigne na IBAN, Monerium automatski kreira issue order (placed → pending → processed). Izmjereno u produkciji: za IBAN koji je već plaćao, od placed do processed medijan 9 s (p95 26 s). Prvu uplatu s novog IBAN-a Monerium zadržava na ručnom pregledu — od nekoliko minuta do nekoliko sati.",
@@ -487,11 +522,11 @@ export const transitions: Transition[] = [
 		id: "checkoutReceived",
 		from: "moneriumMpt",
 		to: "moneriumMpt",
-		edge: "e-mint",
+		edge: "e-sepa",
 		label: { hr: "Checkout: „zaprimljeno“ odmah", en: "Checkout: “received” right away" },
 		description: {
-			hr: "Već na Moneriumov webhook order.created backend poveže uplatu s intentom (samo čitanje — novac se još ne miče) i checkout preko SSE streama odmah pokaže „zaprimljeno“. U produkciji 9. 10. 2026. signal je stigao 0 s od placedAt; platitelj ga je vidio ~5 s nakon što je u banci pritisnuo „Pošalji“.",
-			en: "Already on Monerium's order.created webhook the backend links the payment to the intent (read-only — no money moves yet) and the checkout shows “received” instantly over an SSE stream. In production on 9 Oct 2026 the signal fired 0 s after placedAt; the payer saw it ~5 s after pressing “Send” in the bank app.",
+			hr: "Već na Moneriumov webhook order.created MPT poveže uplatu s intentom (samo čitanje — novac je kod Moneriuma i još se ne minta), checkout preko SSE streama odmah pokaže „zaprimljeno“, a trgovac dobije webhook payment.received. U produkciji 9. 10. 2026. signal je stigao 0 s od placedAt; platitelj ga je vidio ~5 s nakon što je u banci pritisnuo „Pošalji“.",
+			en: "Already on Monerium's order.created webhook MPT links the payment to the intent (read-only — the money is with Monerium and not minted yet), the checkout shows “received” instantly over an SSE stream, and the merchant gets a payment.received webhook. In production on 9 Oct 2026 the signal fired 0 s after placedAt; the payer saw it ~5 s after pressing “Send” in the bank app.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Signal statusa — ništa se ne naplaćuje.", en: "Status signal — nothing is charged." },
@@ -504,8 +539,8 @@ export const transitions: Transition[] = [
 		edge: "e-sepa",
 		label: { hr: "SEPA Instant bez reference", en: "SEPA Instant without a reference" },
 		description: {
-			hr: "Ista uplata, ali referenca je prazna — Revolut iOS je ponekad ispusti iz EPC QR koda, ili je platitelj obriše. Novac svejedno stiže na Moneriumov IBAN i minta se na Safe; kamo dalje, odlučuje resolver.",
-			en: "The same payment, but the reference is empty — Revolut iOS sometimes drops it from the EPC QR code, or the payer deletes it. The money still lands on Monerium's IBAN and is minted to the Safe; the resolver decides where it goes next.",
+			hr: "Ista uplata, ali referenca je prazna — Revolut nakon skeniranja QR koda opis često ispusti, ili ga platitelj obriše. Novac svejedno stiže na Monerium IBAN trgovca; bez reference Monerium ne zna u koji Safe mintati.",
+			en: "The same payment, but the reference is empty — after scanning the QR code Revolut often drops the description, or the payer deletes it. The money still lands on the merchant's Monerium IBAN; without a reference Monerium doesn't know which Safe to mint into.",
 		},
 		feePayer: "revolut",
 		feeNote: { hr: "SEPA transakciju plaća Revolut.", en: "Revolut pays the SEPA transaction." },
@@ -515,29 +550,30 @@ export const transitions: Transition[] = [
 	{
 		id: "mintEure",
 		from: "moneriumMpt",
-		to: "safeRelayer",
+		to: "merchant",
 		edge: "e-mint",
-		label: { hr: "Mint EURe 1:1", en: "1:1 EURe mint" },
+		label: { hr: "Monerium minta EURe izravno trgovcu", en: "Monerium mints EURe straight to the merchant" },
 		description: {
-			hr: "Monerium minta EURe (1:1 s eurom) na default wallet trgovca — Safe tenanta (2/3 multisig) na Gnosis Chainu; danas je to Safe prvog tenanta, ITalk d.o.o. Ponovljenom platitelju mint se potvrdi medijan 9 s nakon uplate (p95 26 s); prvu uplatu s novog IBAN-a Monerium zadrži na ručnom pregledu, od nekoliko minuta do nekoliko sati.",
-			en: "Monerium mints EURe (1:1 with the euro) to the merchant's default wallet — the tenant's Safe (a 2/3 multisig) on Gnosis Chain; today that is the Safe of the first tenant, ITalk d.o.o. For a returning payer the mint confirms a median 9 s after the payment (p95 26 s); the first payment from a new IBAN is held by Monerium for manual review, from a few minutes to a few hours.",
+			hr: "Monerium pročita gnosis:0x<Safe> iz reference i minta EURe (1:1 s eurom) izravno u Safe trgovca ili projekta na Gnosis Chainu — taj Safe mora biti povezan s Monerium profilom tenanta. MPT novac ne dira: kad Monerium javi da je order obrađen, MPT intent označi kao „paid“, pošalje trgovcu potpisani webhook intent.paid (s outboxom koji ponavlja isporuku) i osvježi status uživo. Ponovljenom platitelju Monerium obradi uplatu medijan 9 s nakon uplate (p95 26 s).",
+			en: "Monerium reads gnosis:0x<Safe> from the reference and mints EURe (1:1 with the euro) straight into the merchant's or project's Safe on Gnosis Chain — that Safe must be linked to the tenant's Monerium profile. MPT never touches the money: once Monerium reports the order processed, MPT marks the intent “paid”, sends the merchant a signed intent.paid webhook (with an outbox that retries delivery) and updates the live status. For a returning payer Monerium processes the payment a median 9 s after it is sent (p95 26 s).",
 		},
 		feePayer: "monerium",
 		feeNote: { hr: "Mint je besplatan.", en: "Minting is free." },
+		maxAmount: 10000,
 		movesMoney: true,
 	},
 	{
-		id: "relaySponsoredTx",
-		from: "safeRelayer",
-		to: "userAddress",
-		edge: "e-relay",
-		label: { hr: "Backend forwarda EURe s Safea", en: "The backend forwards the EURe from the Safe" },
+		id: "mintToMainSafe",
+		from: "moneriumMpt",
+		to: "safeRelayer",
+		edge: "e-mint-main",
+		label: { hr: "Mint na glavni Safe tenanta", en: "Mint to the tenant's main Safe" },
 		description: {
-			hr: "Backend worker (pay-domovina-backend na Cloudflare Workers) na webhook 'processed' pročita adresu iz reference i izvrši transfer kroz Zodiac Roles modul (rola EUReForwarder — smije samo EURe.transfer). Potpisuje ograničeni router EOA koji plaća gas. Forward je fail-closed: ide samo na odobrene adrese (payout whitelist).",
-			en: "On the 'processed' webhook, the backend worker (pay-domovina-backend on Cloudflare Workers) reads the address from the reference and executes the transfer through the Zodiac Roles module (EUReForwarder role — allowed only EURe.transfer). A constrained router EOA signs and pays the gas. The forward is fail-closed: it only goes to approved addresses (payout whitelist).",
+			hr: "Bez reference Monerium minta EURe na default wallet tenanta — glavni Safe (2/3 multisig); za ITalk d.o.o. to je Safe 0x449a…. Novac je i dalje trgovčev, samo još nije na Safeu projekta kojem je namijenjen.",
+			en: "Without a reference Monerium mints the EURe to the tenant's default wallet — its main Safe (a 2/3 multisig); for ITalk d.o.o. that is Safe 0x449a…. The money is still the merchant's; it just isn't on the Safe of the project it was meant for yet.",
 		},
-		feePayer: "mpt",
-		feeNote: { hr: "Gas plaća MPT-ov router EOA — dijelić centa.", en: "Gas is paid by the MPT router EOA — a fraction of a cent." },
+		feePayer: "monerium",
+		feeNote: { hr: "Mint je besplatan.", en: "Minting is free." },
 		movesMoney: true,
 	},
 	{
@@ -547,8 +583,8 @@ export const transitions: Transition[] = [
 		edge: "e-forward",
 		label: { hr: "Resolver: uplata bez reference", en: "Resolver: payment without a reference" },
 		description: {
-			hr: "Stray resolver traži checkout intent istog trgovca s točno istim iznosom, kreiran u vremenskom prozoru oko uplate — otvoreni intenti odlučuju prije isteklih. Ako svi kandidati vode na istu adresu, uplata ide dalje istim forwardom i istim provjerama kao da je referenca bila ispravna; ako ih nema ili se razlikuju, novac ostaje parkiran na Safeu i operater ga ručno preusmjeri. Prva takva uplata u produkciji (8. 10. 2026., 1,05 €) stigla je do statusa 'paid' za ~12 s.",
-			en: "The stray resolver looks for a checkout intent of the same merchant with exactly the same amount, created in a time window around the payment — open intents decide before expired ones. If all candidates lead to the same address, the payment continues through the same forward and the same checks as if the reference had been there; if there are none or they disagree, the money stays parked in the Safe and an operator reroutes it by hand. The first such payment in production (8 Oct 2026, €1.05) reached 'paid' in ~12 s.",
+			hr: "Stray resolver traži checkout intent istog trgovca s točno istim iznosom, kreiran u vremenskom prozoru oko uplate — otvoreni intenti odlučuju prije isteklih. Ako je platitelj upisao kratki kod intenta, on odlučuje. Ako je kandidat jednoznačan, uplata ide dalje rolom ProjectRouter; ako ga nema ili su kandidati različiti, ništa se ne pogađa.",
+			en: "The stray resolver looks for a checkout intent of the same merchant with exactly the same amount, created in a time window around the payment — open intents decide before expired ones. If the payer typed the intent's short code, that decides. With one unambiguous candidate the payment continues through the ProjectRouter role; with none or conflicting ones, nothing is guessed.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Odluka u backendu — ništa se ne naplaćuje.", en: "A backend decision — nothing is charged." },
@@ -559,13 +595,13 @@ export const transitions: Transition[] = [
 		from: "safeRelayer",
 		to: "merchant",
 		edge: "e-forward",
-		label: { hr: "Forward izravno trgovcu", en: "Forward straight to the merchant" },
+		label: { hr: "ProjectRouter prosljeđuje na projektni Safe", en: "ProjectRouter forwards to the project Safe" },
 		description: {
-			hr: "U referenci je adresa trgovca i sid intenta (mpt:0x<trgovac>?sid=<intent>), pa backend forwarda EURe sa Safea izravno trgovcu — kupcu ne treba wallet. Forward je fail-closed (samo odobrene adrese), a intent prelazi u 'paid' tek na onchain potvrdi; trgovac dobiva webhook (received → paid). Manja uplata od iznosa intenta nikad ne postaje 'paid'. U produkciji 5. 10. 2026. uplata od 1,06 € stigla je do statusa 'paid' ~12 s nakon zaprimanja.",
-			en: "The reference carries the merchant's address and the intent sid (mpt:0x<merchant>?sid=<intent>), so the backend forwards the EURe from the Safe straight to the merchant — the buyer needs no wallet. The forward is fail-closed (approved addresses only) and the intent flips to 'paid' only on onchain confirmation; the merchant gets a webhook (received → paid). A payment smaller than the intent never becomes 'paid'. In production on 5 Oct 2026 a €1.06 payment was paid ~12 s after it was received.",
+			hr: "Rola ProjectRouter na glavnom Safeu smije samo EURe.transfer, i to samo na projektne Safe-ove koje su 2 od 3 vlasnika unaprijed odobrili. To ograničenje provodi Zodiac Roles modifier na lancu, ne MPT-ov kod, pa ni ukradeni ključ routera ne može poslati novac izvan tog skupa — najgori ishod je pogrešan od vlastitih projekata. Kapice na iznos nema. Prije slanja MPT transakciju simulira; intent postaje „paid“ na onchain potvrdi i trgovac dobiva webhook. Prvi produkcijski test (19. 10. 2026., 1 € iz Revoluta bez opisa) došao je do „paid“ unutar ~20 s od Moneriumova ordera.",
+			en: "The ProjectRouter role on the main Safe may only call EURe.transfer, and only to project Safes that 2 of 3 owners approved in advance. The Zodiac Roles modifier enforces that onchain, not MPT's code, so even a stolen router key cannot send money outside that set — the worst outcome is the wrong one of the owners' own projects. There is no amount cap. MPT simulates the transaction before sending it; the intent flips to “paid” on onchain confirmation and the merchant gets a webhook. The first production test (19 Oct 2026, €1 from Revolut without a description) reached “paid” within ~20 s of Monerium's order.",
 		},
 		feePayer: "mpt",
-		feeNote: { hr: "Gas plaća MPT-ov router EOA — dijelić centa.", en: "Gas is paid by the MPT router EOA — a fraction of a cent." },
+		feeNote: { hr: "Gas plaća MPT (ključ role ProjectRouter) — dijelić centa.", en: "Gas is paid by MPT (the ProjectRouter key) — a fraction of a cent." },
 		maxAmount: 10000,
 		movesMoney: true,
 	},
@@ -576,8 +612,8 @@ export const transitions: Transition[] = [
 		edge: "e-forward",
 		label: { hr: "Nema jednoznačnog intenta — novac parkiran", en: "No unambiguous intent — the money is parked" },
 		description: {
-			hr: "Resolver nije našao intent istog trgovca s točno tim iznosom u vremenskom prozoru (ili su kandidati vodili na različite adrese). Ništa se ne pogađa: novac ostaje na Safeu trgovca, operater dobiva alarm, a trgovac webhook forward.blocked ako je uplata imala sid. Novac se ne gubi i ne vraća automatski.",
-			en: "The resolver found no intent of the same merchant with exactly this amount in the time window (or the candidates led to different addresses). Nothing is guessed: the money stays in the merchant's Safe, the operator gets an alert, and the merchant gets a forward.blocked webhook if the payment carried a sid. The money is neither lost nor returned automatically.",
+			hr: "Resolver nije našao intent istog trgovca s točno tim iznosom u vremenskom prozoru (ili su kandidati vodili na različite Safe-ove). Ništa se ne pogađa: novac ostaje na glavnom Safeu trgovca, operater dobiva alarm, a trgovac webhook forward.blocked ako je uplata imala sid. Novac se ne gubi i ne vraća automatski.",
+			en: "The resolver found no intent of the same merchant with exactly this amount in the time window (or the candidates led to different Safes). Nothing is guessed: the money stays in the merchant's main Safe, the operator gets an alert, and the merchant gets a forward.blocked webhook if the payment carried a sid. The money is neither lost nor returned automatically.",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Odluka u backendu — ništa se ne naplaćuje.", en: "A backend decision — nothing is charged." },
@@ -588,13 +624,13 @@ export const transitions: Transition[] = [
 		from: "safeRelayer",
 		to: "merchant",
 		edge: "e-forward",
-		label: { hr: "Operater preusmjeri parkiranu uplatu", en: "The operator reroutes the parked payment" },
+		label: { hr: "Parkirana uplata se ručno veže uz narudžbu", en: "The parked payment is linked to its order by hand" },
 		description: {
-			hr: "Operater u admin konzoli poveže parkiranu uplatu s pravom narudžbom i pokrene isti forward — iste provjere, samo na odobrene adrese trgovca. Druga mogućnost: vlasnici Safea (2 od 3) isplate ručno i uplata se označi riješenom izvan raila.",
-			en: "In the admin console the operator links the parked payment to the right order and starts the same forward — same checks, approved merchant addresses only. Alternatively the Safe's owners (2 of 3) pay it out by hand and the payment is marked resolved off-rail.",
+			hr: "Operater u admin konzoli poveže parkiranu uplatu s pravom narudžbom (samo među intentima tog trgovca, nikad na slobodnu adresu), a ProjectRouter je proslijedi na projektni Safe — isto ograničenje na lancu. Druga mogućnost: vlasnici glavnog Safea (2 od 3) prebace novac sami i uplata se označi riješenom izvan raila.",
+			en: "In the admin console the operator links the parked payment to the right order (only among that merchant's intents, never a free address), and ProjectRouter forwards it to the project Safe — the same onchain restriction. Alternatively the main Safe's owners (2 of 3) move the money themselves and the payment is marked resolved off-rail.",
 		},
 		feePayer: "mpt",
-		feeNote: { hr: "Gas plaća MPT-ov router EOA — dijelić centa.", en: "Gas is paid by the MPT router EOA — a fraction of a cent." },
+		feeNote: { hr: "Gas plaća MPT (ključ role ProjectRouter) — dijelić centa.", en: "Gas is paid by MPT (the ProjectRouter key) — a fraction of a cent." },
 		maxAmount: 10000,
 		movesMoney: true,
 	},
@@ -602,11 +638,11 @@ export const transitions: Transition[] = [
 		id: "underpaidNotice",
 		from: "merchant",
 		to: "merchant",
-		edge: "e-forward",
+		edge: "e-mint",
 		label: { hr: "Manja uplata: webhook payment.underpaid", en: "Short payment: payment.underpaid webhook" },
 		description: {
-			hr: "Kupac je poslao manje od iznosa intenta. Novac je svejedno stigao trgovcu, ali intent ne postaje 'paid' — ostaje otvoren dok ne istekne, a trgovac dobiva webhook payment.underpaid s očekivanim i primljenim iznosom. Uplate se ne zbrajaju: o narudžbi (dopuna, povrat razlike, otkaz) odlučuje trgovac.",
-			en: "The buyer sent less than the intent amount. The money still reached the merchant, but the intent does not become 'paid' — it stays open until it expires, and the merchant gets a payment.underpaid webhook with the expected and received amounts. Payments are not added up: the merchant decides what happens to the order (top-up, refund of the difference, cancellation).",
+			hr: "Kupac je poslao manje od iznosa intenta. Monerium je novac svejedno mintao u Safe trgovca, ali intent ne postaje 'paid' — ostaje otvoren dok ne istekne, a trgovac dobiva webhook payment.underpaid s očekivanim i primljenim iznosom. Uplate se ne zbrajaju: o narudžbi (dopuna, povrat razlike, otkaz) odlučuje trgovac.",
+			en: "The buyer sent less than the intent amount. Monerium still minted the money into the merchant's Safe, but the intent does not become 'paid' — it stays open until it expires, and the merchant gets a payment.underpaid webhook with the expected and received amounts. Payments are not added up: the merchant decides what happens to the order (top-up, refund of the difference, cancellation).",
 		},
 		feePayer: "none",
 		feeNote: { hr: "Webhook — ništa se ne naplaćuje.", en: "A webhook — nothing is charged." },
@@ -708,15 +744,44 @@ export const transitions: Transition[] = [
 		id: "openMoneriumKyc",
 		from: null,
 		to: null,
-		edge: "e-redeem",
+		edge: "e-own-mint",
 		label: { hr: "Otvaranje vlastitog Monerium računa", en: "Open an own Monerium account" },
 		description: {
-			hr: "Za off-ramp korisnik otvori vlastiti Monerium račun uz KYC/KYB provjeru i poveže svoju adresu (potpisom fiksne poruke o vlasništvu adrese).",
-			en: "For the off-ramp the user opens their own Monerium account with KYC/KYB verification and links their address (by signing the fixed address-ownership message).",
+			hr: "Za punjenje vlastitog walleta i za off-ramp korisnik treba vlastiti Monerium račun uz KYC/KYB provjeru, s povezanom adresom (potpis fiksne poruke o vlasništvu adrese). Firme ga otvaraju izravno kod Moneriuma; osobe od 30. 10. 2026. ne mogu u Moneriumovoj aplikaciji, nego preko partnera (npr. Bleap). MPT nije u tom koraku.",
+			en: "To fund their own wallet and to off-ramp, the user needs an own Monerium account with KYC/KYB verification and a linked address (by signing the fixed address-ownership message). Companies open it directly with Monerium; since 30 Oct 2026 individuals can no longer do so in Monerium's app and go through partners instead (e.g. Bleap). MPT is not part of this step.",
 		},
 		feePayer: "none",
-		feeNote: { hr: "Otvaranje računa je besplatno.", en: "Opening the account is free." },
+		feeNote: { hr: "Procesni korak — MPT ništa ne naplaćuje.", en: "Process step — MPT charges nothing." },
 		movesMoney: false,
+	},
+	{
+		id: "sepaToOwnMonerium",
+		from: "revolut",
+		to: "ownMonerium",
+		edge: "e-own-sepa",
+		label: { hr: "SEPA Instant na vlastiti Monerium IBAN", en: "SEPA Instant to an own Monerium IBAN" },
+		description: {
+			hr: "Za punjenje vlastitog walleta korisnik šalje SEPA Instant na IBAN svog Monerium računa — ne na račun trgovca. MPT od 15. 10. 2026. više ne prosljeđuje uplate na proizvoljnu korisnikovu adresu. Minimum od 1 € je Revolutovo pravilo.",
+			en: "To fund their own wallet the user sends a SEPA Instant to the IBAN of their own Monerium account — not to a merchant's. Since 15 Oct 2026 MPT no longer forwards payments to an arbitrary user address. The €1 minimum is a Revolut rule.",
+		},
+		feePayer: "revolut",
+		feeNote: { hr: "SEPA transakciju plaća Revolut.", en: "Revolut pays the SEPA transaction." },
+		minAmount: 1,
+		movesMoney: true,
+	},
+	{
+		id: "mintToOwnAddress",
+		from: "ownMonerium",
+		to: "userAddress",
+		edge: "e-own-mint",
+		label: { hr: "Mint EURe na vlastitu adresu", en: "EURe mint to the own address" },
+		description: {
+			hr: "Monerium minta EURe 1:1 na adresu povezanu s korisnikovim računom na Gnosis Chainu. Od tog trenutka korisnik sam raspolaže EURe — P2P, checkout iz walleta, kartica ili off-ramp.",
+			en: "Monerium mints EURe 1:1 to the address linked to the user's account on Gnosis Chain. From then on the user controls the EURe — P2P, wallet checkout, a card or the off-ramp.",
+		},
+		feePayer: "monerium",
+		feeNote: { hr: "Mint je besplatan.", en: "Minting is free." },
+		movesMoney: true,
 	},
 	{
 		id: "redeemEure",
@@ -757,16 +822,30 @@ export const transitionById = Object.fromEntries(transitions.map((t) => [t.id, t
 // Scenarios — the N simulations
 // ---------------------------------------------------------------------------
 
-/** the common on-ramp prefix used by most scenarios */
+/** the user's own on-ramp — through their OWN Monerium account, MPT is not in this path */
 const onramp = (amount: number): ScenarioStep[] => [
+	{ t: "openMoneriumKyc" },
+	{ t: "cardTopup", amount },
+	{ t: "sepaToOwnMonerium", amount },
+	{ t: "mintToOwnAddress", amount },
+];
+
+/** the buyer's path up to the merchant's Monerium IBAN, with the reference intact */
+const toMerchantIban = (amount: number): ScenarioStep[] => [
 	{ t: "cardTopup", amount },
 	{ t: "scanEpcQr" },
 	{ t: "confirmAllowlist" },
 	{ t: "revolutInternalCheck" },
 	{ t: "sepaToMonerium", amount },
-	{ t: "moneriumVerify" },
-	{ t: "mintEure", amount },
-	{ t: "relaySponsoredTx", amount },
+];
+
+/** the same path when the bank drops the reference */
+const toMerchantIbanNoRef = (amount: number): ScenarioStep[] => [
+	{ t: "cardTopup", amount },
+	{ t: "scanEpcQr" },
+	{ t: "confirmAllowlist" },
+	{ t: "revolutInternalCheck" },
+	{ t: "sepaNoReference", amount },
 ];
 
 export const scenarios: Scenario[] = [
@@ -774,39 +853,30 @@ export const scenarios: Scenario[] = [
 		id: "sepa-checkout",
 		name: { hr: "1 · Kupac plaća trgovcu iz banke", en: "1 · A buyer pays a merchant from the bank" },
 		description: {
-			hr: "Glavni tok: kupac skenira QR na checkoutu, u referenci je adresa trgovca i sid intenta. Uplata stiže na Monerium IBAN trgovca, checkout odmah pokaže „zaprimljeno“, a EURe s trgovčevog Safea ide na njegovu odobrenu adresu — kupcu ne treba ni wallet ni kripto, a ITalk novac nikad ne drži.",
-			en: "The main flow: the buyer scans the checkout QR, whose reference carries the merchant's address and the intent sid. The payment lands on the merchant's Monerium IBAN, the checkout shows “received” right away, and the EURe goes from the merchant's Safe to its approved address — the buyer needs neither a wallet nor crypto, and ITalk never holds the money.",
+			hr: "Glavni tok: kupac skenira QR na checkoutu, u referenci je Safe trgovca i sid intenta. Uplata stiže na Monerium IBAN trgovca, checkout odmah pokaže „zaprimljeno“, a Monerium minta EURe izravno u Safe trgovca — MPT samo uparuje uplatu s narudžbom i javlja „paid“. Kupcu ne treba ni wallet ni kripto, a ITalk novac nikad ne drži.",
+			en: "The main flow: the buyer scans the checkout QR, whose reference carries the merchant's Safe and the intent sid. The payment lands on the merchant's Monerium IBAN, the checkout shows “received” right away, and Monerium mints the EURe straight into the merchant's Safe — MPT only matches the payment to the order and reports “paid”. The buyer needs neither a wallet nor crypto, and ITalk never holds the money.",
 		},
 		initialAmount: 25,
 		steps: [
-			{ t: "cardTopup", amount: 25 },
-			{ t: "scanEpcQr" },
-			{ t: "confirmAllowlist" },
-			{ t: "revolutInternalCheck" },
-			{ t: "sepaToMonerium", amount: 25 },
+			...toMerchantIban(25),
 			{ t: "checkoutReceived" },
 			{ t: "moneriumVerify" },
 			{ t: "mintEure", amount: 25 },
-			{ t: "forwardToPayee", amount: 25 },
 		],
 	},
 	{
 		id: "stray",
 		name: { hr: "2 · Uplata bez reference", en: "2 · A payment without a reference" },
 		description: {
-			hr: "Isti checkout, ali referenca se izgubila (Revolut iOS je ponekad ispusti iz QR-a). Resolver je poveže s otvorenim intentom istog trgovca po točnom iznosu i vremenu — i novac svejedno stigne trgovcu, bez ručnog rada.",
-			en: "The same checkout, but the reference got lost (Revolut iOS sometimes drops it from the QR). The resolver links it to an open intent of the same merchant by exact amount and time — and the money still reaches the merchant, with no manual work.",
+			hr: "Isti checkout, ali Revolut je nakon skeniranja QR-a ispustio referencu. Monerium minta na glavni Safe trgovca, resolver uplatu poveže s otvorenim intentom po točnom iznosu i vremenu (ili kratkom kodu), a rola ProjectRouter je proslijedi na projektni Safe — samo na onaj koji su vlasnici odobrili, bez ručnog rada.",
+			en: "The same checkout, but Revolut dropped the reference after the QR scan. Monerium mints to the merchant's main Safe, the resolver links the payment to an open intent by exact amount and time (or the short code), and the ProjectRouter role forwards it to the project Safe — only one the owners approved, with no manual work.",
 		},
 		initialAmount: 15,
 		steps: [
-			{ t: "cardTopup", amount: 15 },
-			{ t: "scanEpcQr" },
-			{ t: "confirmAllowlist" },
-			{ t: "revolutInternalCheck" },
-			{ t: "sepaNoReference", amount: 15 },
+			...toMerchantIbanNoRef(15),
 			{ t: "checkoutReceived" },
 			{ t: "moneriumVerify" },
-			{ t: "mintEure", amount: 15 },
+			{ t: "mintToMainSafe", amount: 15 },
 			{ t: "strayResolve" },
 			{ t: "forwardToPayee", amount: 15 },
 		],
@@ -815,18 +885,14 @@ export const scenarios: Scenario[] = [
 		id: "parked",
 		name: { hr: "3 · Uplata koju resolver ne može povezati", en: "3 · A payment the resolver can't match" },
 		description: {
-			hr: "Kupac je izgubio referencu i još je promijenio iznos, pa nijedan intent ne odgovara. Novac se ne pogađa i ne gubi: ostaje na Safeu trgovca, operater dobiva alarm i ručno ga preusmjeri na pravu narudžbu.",
-			en: "The buyer lost the reference and also changed the amount, so no intent matches. The money is neither guessed nor lost: it stays in the merchant's Safe, the operator gets an alert and reroutes it to the right order by hand.",
+			hr: "Kupac je izgubio referencu i još je promijenio iznos, pa nijedan intent ne odgovara. Novac se ne pogađa i ne gubi: ostaje na glavnom Safeu trgovca, operater dobiva alarm i ručno ga veže uz pravu narudžbu.",
+			en: "The buyer lost the reference and also changed the amount, so no intent matches. The money is neither guessed nor lost: it stays in the merchant's main Safe, the operator gets an alert and links it to the right order by hand.",
 		},
 		initialAmount: 20,
 		steps: [
-			{ t: "cardTopup", amount: 20 },
-			{ t: "scanEpcQr" },
-			{ t: "confirmAllowlist" },
-			{ t: "revolutInternalCheck" },
-			{ t: "sepaNoReference", amount: 20 },
+			...toMerchantIbanNoRef(20),
 			{ t: "moneriumVerify" },
-			{ t: "mintEure", amount: 20 },
+			{ t: "mintToMainSafe", amount: 20 },
 			{ t: "strayPark" },
 			{ t: "operatorReroute", amount: 20 },
 		],
@@ -835,29 +901,24 @@ export const scenarios: Scenario[] = [
 		id: "underpaid",
 		name: { hr: "4 · Kupac uplati manje od iznosa narudžbe", en: "4 · The buyer pays less than the order" },
 		description: {
-			hr: "Narudžba je 25 €, a kupac pošalje 20 €. Novac stigne trgovcu jednako brzo, ali intent ne postaje „plaćen“ — trgovac dobije webhook payment.underpaid i sam odluči o narudžbi.",
-			en: "The order is €25 and the buyer sends €20. The money reaches the merchant just as fast, but the intent does not become “paid” — the merchant gets a payment.underpaid webhook and decides what happens to the order.",
+			hr: "Narudžba je 25 €, a kupac pošalje 20 €. Monerium novac jednako brzo minta u Safe trgovca, ali intent ne postaje „plaćen“ — trgovac dobije webhook payment.underpaid i sam odluči o narudžbi.",
+			en: "The order is €25 and the buyer sends €20. Monerium mints the money into the merchant's Safe just as fast, but the intent does not become “paid” — the merchant gets a payment.underpaid webhook and decides what happens to the order.",
 		},
 		initialAmount: 20,
 		steps: [
-			{ t: "cardTopup", amount: 20 },
-			{ t: "scanEpcQr" },
-			{ t: "confirmAllowlist" },
-			{ t: "revolutInternalCheck" },
-			{ t: "sepaToMonerium", amount: 20 },
+			...toMerchantIban(20),
 			{ t: "checkoutReceived" },
 			{ t: "moneriumVerify" },
 			{ t: "mintEure", amount: 20 },
-			{ t: "forwardToPayee", amount: 20 },
 			{ t: "underpaidNotice" },
 		],
 	},
 	{
 		id: "onramp",
-		name: { hr: "5 · On-ramp: banka → EURe", en: "5 · On-ramp: bank → EURe" },
+		name: { hr: "5 · Vlastiti wallet: banka → EURe", en: "5 · Own wallet: bank → EURe" },
 		description: {
-			hr: "Osnovni tok: 10 € s hrvatske banke do EURe na korisnikovoj Gnosis adresi — svaki korak 0 € za korisnika.",
-			en: "The core flow: €10 from a Croatian bank to EURe on the user's Gnosis address — every step €0 for the user.",
+			hr: "Punjenje vlastitog walleta ide preko vlastitog Monerium računa, ne preko MPT-a: 10 € s hrvatske banke do EURe na korisnikovoj Gnosis adresi — svaki korak 0 € za korisnika.",
+			en: "Funding an own wallet goes through an own Monerium account, not through MPT: €10 from a Croatian bank to EURe on the user's Gnosis address — every step €0 for the user.",
 		},
 		initialAmount: 10,
 		steps: onramp(10),
@@ -866,13 +927,12 @@ export const scenarios: Scenario[] = [
 		id: "full-circle",
 		name: { hr: "6 · Puni krug: banka → banka", en: "6 · Full circle: bank → bank" },
 		description: {
-			hr: "Cijeli krug: on-ramp, KYC na vlastitom Monerium računu, potpisani redeem i besplatni SEPA Instant off-ramp natrag u istu banku iz koje je krug krenuo. 50 € ode — 50 € se vrati.",
-			en: "The whole circle: on-ramp, KYC on an own Monerium account, a signed redeem and a free SEPA Instant off-ramp back to the very bank the circle started from. €50 leaves — €50 comes back.",
+			hr: "Cijeli krug kroz vlastiti Monerium račun: punjenje walleta, potpisani redeem i besplatni SEPA Instant off-ramp natrag u istu banku iz koje je krug krenuo. 50 € ode — 50 € se vrati.",
+			en: "The whole circle through an own Monerium account: funding the wallet, a signed redeem and a free SEPA Instant off-ramp back to the very bank the circle started from. €50 leaves — €50 comes back.",
 		},
 		initialAmount: 50,
 		steps: [
 			...onramp(50),
-			{ t: "openMoneriumKyc" },
 			{ t: "redeemEure", amount: 50 },
 			{ t: "sepaInstantOfframp", amount: 50 },
 		],
@@ -881,8 +941,8 @@ export const scenarios: Scenario[] = [
 		id: "p2p",
 		name: { hr: "7 · Onchain P2P transferi", en: "7 · Onchain P2P transfers" },
 		description: {
-			hr: "Nakon on-rampa korisnik radi više onchain transakcija — 20 € i 10 € na druge adrese, 20 € ostaje.",
-			en: "After the on-ramp the user makes multiple onchain transactions — €20 and €10 to other addresses, €20 remains.",
+			hr: "Nakon punjenja walleta korisnik radi više onchain transakcija — 20 € i 10 € na druge adrese, 20 € ostaje.",
+			en: "After funding the wallet the user makes multiple onchain transactions — €20 and €10 to other addresses, €20 remains.",
 		},
 		initialAmount: 50,
 		steps: [
@@ -921,8 +981,8 @@ export const scenarios: Scenario[] = [
 		id: "guards",
 		name: { hr: "10 · Zaštitni limiti (guardovi)", en: "10 · Guard limits" },
 		description: {
-			hr: "Što odbijaju pravila: kartični top-up ispod 10 € i SEPA ispod 1 € (Revolutovi produktni limiti) se odbijaju, zatim ispravni iznosi prolaze. MPT-ov vlastiti guard: intent max 10.000 €.",
-			en: "What the rules reject: a card top-up below €10 and a SEPA below €1 (Revolut product limits) get rejected, then valid amounts pass. MPT's own guard: intents max €10,000.",
+			hr: "Što odbijaju pravila: kartični top-up ispod 10 € i SEPA ispod 1 € (Revolutovi produktni limiti) se odbijaju, zatim ispravni iznosi prolaze do Safea trgovca. MPT-ov vlastiti guard: intent max 10.000 €.",
+			en: "What the rules reject: a card top-up below €10 and a SEPA below €1 (Revolut product limits) get rejected, then valid amounts reach the merchant's Safe. MPT's own guard: intents max €10,000.",
 		},
 		initialAmount: 10,
 		steps: [
@@ -935,7 +995,6 @@ export const scenarios: Scenario[] = [
 			{ t: "sepaToMonerium", amount: 10 },
 			{ t: "moneriumVerify" },
 			{ t: "mintEure", amount: 10 },
-			{ t: "relaySponsoredTx", amount: 10 },
 		],
 	},
 ];
