@@ -30,6 +30,8 @@ export const pagePaths: Record<PageKey, string> = {
 	why: "/why",
 	support: "/support",
 	supportSandbox: "/support/sandbox",
+	supportReceipt: "/support/potvrda",
+	supportVerify: "/support/provjera",
 };
 
 /** "/pricing" → "/hr/pricing", "/#how" → "/hr#how"; external links and mailto pass through */

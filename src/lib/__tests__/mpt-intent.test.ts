@@ -1,0 +1,405 @@
+import { describe, expect, it } from "vitest";
+import {
+  createPaymentIntent,
+  fetchIntent,
+  intentStreamUrl,
+  POLL_MS,
+  SETTLED_GRACE_MS,
+  statusFromJson,
+  watchIntentStatus,
+  type IntentStatus,
+  type IntentTransport,
+  type StreamSource,
+  type WatchDeps,
+} from "@/lib/mpt-intent";
+
+const INTENT = { sid: "abc123", statusUrl: "https://mpt.domovina.ai/api/intents/abc123" };
+
+const st = (stage: IntentStatus["stage"], forwardTxHash: string | null = null): IntentStatus => ({
+  stage,
+  steps: [],
+  forwardTxHash,
+  reviewExpected: null,
+  forwardOwed: false,
+});
+
+/** SSE event kakav rail šalje (`intents/stream.ts` `formatEvent`). */
+const sse = (stage: string, forwardTxHash: string | null = null) =>
+  JSON.stringify({ sid: INTENT.sid, state: "pending", status: { stage, forward_tx_hash: forwardTxHash } });
+
+class FakeStream implements StreamSource {
+  readyState = 0;
+  onerror: ((ev: unknown) => void) | null = null;
+  closed = false;
+  private listeners: ((ev: { data: string }) => void)[] = [];
+  addEventListener(_type: "stage", l: (ev: { data: string }) => void) {
+    this.listeners.push(l);
+  }
+  emit(data: string) {
+    this.readyState = 1;
+    for (const l of this.listeners) l({ data });
+  }
+  fail(readyState: number) {
+    this.readyState = readyState;
+    this.onerror?.({});
+  }
+  close() {
+    this.closed = true;
+    this.readyState = 2;
+  }
+}
+
+/** Ručni sat i red odgovora za polling — bez stvarnog čekanja. */
+function harness(withStream: boolean) {
+  const timers = new Map<number, () => void>();
+  let nextId = 1;
+  const polls: ((s: IntentStatus) => void)[] = [];
+  let pollCount = 0;
+  const stream = new FakeStream();
+  const opened: string[] = [];
+  let visible: (() => void) | null = null;
+  let clock = 0;
+  const deps: WatchDeps = {
+    onVisible: (fn) => {
+      visible = fn;
+      return () => {
+        visible = null;
+      };
+    },
+    openStream: withStream
+      ? (url) => {
+          opened.push(url);
+          return stream;
+        }
+      : null,
+    fetchStatus: () => {
+      pollCount += 1;
+      return new Promise((resolve) => polls.push(resolve));
+    },
+    setTimeout: (fn) => {
+      const id = nextId++;
+      timers.set(id, fn);
+      return id;
+    },
+    clearTimeout: (id) => {
+      timers.delete(id);
+    },
+    now: () => clock,
+  };
+  const seen: IntentStatus[] = [];
+  const transports: IntentTransport[] = [];
+  const stop = watchIntentStatus(INTENT, (s) => seen.push(s), (t) => transports.push(t), deps);
+  return {
+    stream,
+    opened,
+    seen,
+    transports,
+    stop,
+    timers,
+    get pollCount() {
+      return pollCount;
+    },
+    advance(ms: number) {
+      clock += ms;
+    },
+    /** Kartica opet vidljiva (povratak iz aplikacije banke). */
+    becomeVisible() {
+      visible?.();
+    },
+    get listening() {
+      return visible !== null;
+    },
+    /** Odgovori na najstariji otvoreni poll i pusti mikrozadatke. */
+    async answer(s: IntentStatus) {
+      polls.shift()?.(s);
+      await Promise.resolve();
+      await Promise.resolve();
+    },
+    /** Okini sve zakazane timere (sljedeći krug pollinga). */
+    tick() {
+      const fns = [...timers.values()];
+      timers.clear();
+      for (const f of fns) f();
+    },
+  };
+}
+
+describe("statusFromJson", () => {
+  it("izravni mint: mint tx je transakcija dolaska na Safe (rail 20.10.2026., sandbox)", () => {
+    const s = statusFromJson({
+      state: "paid",
+      status: {
+        stage: "settled",
+        forward_tx_hash: null,
+        forward_error: "direct_mint",
+        steps: [
+          { key: "payment", status: "proven", at: 1 },
+          { key: "minted", status: "proven", at: 2, tx_hashes: ["0xmint"] },
+          { key: "forwarding", status: "proven", at: 3, tx_hash: null },
+          { key: "settled", status: "proven", at: 3, tx_hash: null },
+        ],
+      },
+    });
+    expect(s.forwardTxHash).toBe("0xmint");
+  });
+
+  it("bez direct_mint mint tx NIJE dolazak na Safe (forward još slijedi)", () => {
+    const s = statusFromJson({
+      state: "pending",
+      status: { stage: "minted", steps: [{ key: "minted", status: "proven", at: 2, tx_hashes: ["0xmint"] }] },
+    });
+    expect(s.forwardTxHash).toBeNull();
+  });
+
+  it("čita fazu i hash iz `status` (oblik SSE eventa)", () => {
+    expect(
+      statusFromJson({ state: "paid", status: { stage: "settled", forward_tx_hash: "0xabc", review_expected: false } }),
+    ).toEqual({ stage: "settled", steps: [], forwardTxHash: "0xabc", reviewExpected: false, forwardOwed: false });
+  });
+
+  it("čita railove korake s vremenom i hashevima, nepoznate preskače", () => {
+    const s = statusFromJson({
+      status: {
+        stage: "settled",
+        steps: [
+          { key: "payment", status: "proven", at: 100 },
+          { key: "minted", status: "proven", at: 109, tx_hashes: ["0xm"] },
+          { key: "forwarding", status: "proven", at: 116, tx_hash: "0xf" },
+          { key: "teleport", status: "proven", at: 1 },
+          { key: "settled", status: "maybe", at: 1 },
+        ],
+      },
+    });
+    expect(s.steps).toEqual([
+      { key: "payment", status: "proven", at: 100, txHashes: [] },
+      { key: "minted", status: "proven", at: 109, txHashes: ["0xm"] },
+      { key: "forwarding", status: "proven", at: 116, txHashes: ["0xf"] },
+    ]);
+  });
+
+  it("hash na vrhu (oblik `GET status_url`) ima prednost", () => {
+    expect(statusFromJson({ forward_tx_hash: "0x1", status: { stage: "settled", forward_tx_hash: "0x2" } }).forwardTxHash).toBe(
+      "0x1",
+    );
+  });
+
+  it("`direct_owed` znači da prijenos čeka ručni 2-od-3, ne sekunde", () => {
+    // Oblik s live raila 19.10.2026. (Lukavec, ITalk tenant prije ProjectRoutera).
+    expect(statusFromJson({ status: { stage: "forwarding", forward_error: "direct_owed" } }).forwardOwed).toBe(true);
+    expect(statusFromJson({ status: { stage: "forwarding", forward_error: null } }).forwardOwed).toBe(false);
+    expect(statusFromJson({ status: { stage: "forwarding", forward_error: "broadcast_failed" } }).forwardOwed).toBe(false);
+  });
+
+  it("bez `status` faza dolazi iz `state`, kao u checkoutu", () => {
+    expect(statusFromJson({ state: "paid" }).stage).toBe("settled");
+    expect(statusFromJson({ state: "expired" }).stage).toBe("expired");
+    expect(statusFromJson({ state: "pending" }).stage).toBe("awaiting_payment");
+  });
+});
+
+describe("watchIntentStatus", () => {
+  it("povratak na karticu odmah dohvaća status, i kad stream čeka ponovno spajanje", async () => {
+    const h = harness(true);
+    await h.answer({ stage: "awaiting_payment", steps: [], forwardTxHash: null, reviewExpected: null, forwardOwed: false });
+    const before = h.pollCount;
+    h.becomeVisible();
+    expect(h.pollCount).toBe(before + 1);
+    await h.answer({ stage: "received_processing", steps: [], forwardTxHash: null, reviewExpected: null, forwardOwed: false });
+    expect(h.seen.at(-1)?.stage).toBe("received_processing");
+  });
+
+  it("stop odjavljuje slušanje povratka na karticu", () => {
+    const h = harness(true);
+    expect(h.listening).toBe(true);
+    h.stop();
+    expect(h.listening).toBe(false);
+  });
+
+  it("otvara stream na railu za taj sid", () => {
+    const h = harness(true);
+    expect(h.opened).toEqual([intentStreamUrl(INTENT.sid)]);
+    expect(intentStreamUrl("a b")).toBe("https://mpt.domovina.ai/api/intents/a%20b/stream");
+    h.stop();
+  });
+
+  it("prvi SSE event gasi polling", async () => {
+    const h = harness(true);
+    expect(h.transports).toEqual(["poll"]);
+    h.stream.emit(sse("awaiting_payment"));
+    expect(h.transports).toEqual(["poll", "sse"]);
+    await h.answer(st("awaiting_payment"));
+    expect(h.timers.size).toBe(0);
+    h.tick();
+    expect(h.pollCount).toBe(1);
+    h.stop();
+  });
+
+  it("javlja samo promjene, ne svaki event", () => {
+    const h = harness(true);
+    h.stream.emit(sse("awaiting_payment"));
+    h.stream.emit(sse("awaiting_payment"));
+    h.stream.emit(sse("received_processing"));
+    h.stream.emit(sse("received_processing"));
+    expect(h.seen.map((s) => s.stage)).toEqual(["awaiting_payment", "received_processing"]);
+    h.stop();
+  });
+
+  it("završna faza zatvara stream — EventSource se ne spaja ponovno", () => {
+    const h = harness(true);
+    h.stream.emit(sse("settled", "0xfeed"));
+    expect(h.seen.at(-1)).toEqual(st("settled", "0xfeed"));
+    expect(h.stream.closed).toBe(true);
+    h.stream.emit(sse("settled", "0xfeed"));
+    expect(h.seen).toHaveLength(1);
+  });
+
+  it("SSE isključen na railu (404 → CLOSED): ostaje polling svake 2 s", async () => {
+    const h = harness(true);
+    h.stream.fail(2);
+    expect(h.stream.closed).toBe(true);
+    await h.answer(st("awaiting_payment"));
+    expect(h.timers.size).toBe(1);
+    h.tick();
+    expect(h.pollCount).toBe(2);
+    await h.answer(st("received_processing"));
+    expect(h.seen.map((s) => s.stage)).toEqual(["awaiting_payment", "received_processing"]);
+    h.stop();
+  });
+
+  it("prekid streama vraća polling, ponovni event ga opet gasi", async () => {
+    const h = harness(true);
+    h.stream.emit(sse("awaiting_payment"));
+    await h.answer(st("awaiting_payment"));
+    h.stream.fail(0);
+    expect(h.transports).toEqual(["poll", "sse", "poll"]);
+    expect(h.pollCount).toBe(2);
+    h.stream.emit(sse("received_processing"));
+    expect(h.transports.at(-1)).toBe("sse");
+    h.stop();
+  });
+
+  it("bez EventSourcea radi samo polling i staje na završnoj fazi", async () => {
+    const h = harness(false);
+    await h.answer(st("awaiting_payment"));
+    h.tick();
+    await h.answer(st("expired"));
+    expect(h.seen.map((s) => s.stage)).toEqual(["awaiting_payment", "expired"]);
+    expect(h.timers.size).toBe(0);
+    expect(POLL_MS).toBe(2_000);
+  });
+
+  it("`settled` bez forwarda (Revolut bez reference) prati dalje dok ne stigne hash", async () => {
+    const h = harness(true);
+    h.stream.emit(sse("settled"));
+    expect(h.stream.closed).toBe(false);
+    h.stream.fail(2); // rail zatvori stream na završnoj fazi → polling
+    await h.answer(st("settled"));
+    h.tick();
+    await h.answer(st("settled", "0xf0"));
+    expect(h.seen.map((s) => s.forwardTxHash)).toEqual([null, "0xf0"]);
+    expect(h.timers.size).toBe(0);
+  });
+
+  it("`settled` bez forwarda (direktan mint) staje nakon roka", async () => {
+    const h = harness(false);
+    await h.answer(st("settled"));
+    h.advance(SETTLED_GRACE_MS);
+    h.tick();
+    await h.answer(st("settled"));
+    expect(h.timers.size).toBe(0);
+    expect(h.seen).toHaveLength(1);
+  });
+
+  it("nakon gašenja ništa ne javlja", async () => {
+    const h = harness(true);
+    h.stop();
+    h.stream.emit(sse("settled"));
+    await h.answer(st("settled"));
+    expect(h.seen).toHaveLength(0);
+    expect(h.stream.closed).toBe(true);
+  });
+});
+
+describe("createPaymentIntent — hub3_data", () => {
+  const base = {
+    sid: "abc123",
+    amount_eur: "1.00",
+    memo: "mpt:0x0000000000000000000000000000000000000001?sid=abc123",
+    iban: "EE707777000162921128",
+    beneficiary_name: "ITalk d.o.o.",
+    epc_qr_data: "BCD",
+    status_url: INTENT.statusUrl,
+  };
+  const withFetch = async (body: object) => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify(body), { status: 201 })) as typeof fetch;
+    try {
+      return await createPaymentIntent("0x0000000000000000000000000000000000000001", 1);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  };
+
+  it("prenosi HUB3 tekst koji je rail sastavio", async () => {
+    const r = await withFetch({ ...base, hub3_data: "HRVHUB30\nEUR\n" });
+    expect(r.ok && r.intent.hub3Data).toBe("HRVHUB30\nEUR\n");
+  });
+
+  it("kratka referenca (rail ADR 0028): samo znamenke, inače null", async () => {
+    const ok = await withFetch({ ...base, short_ref: "0076" });
+    expect(ok.ok && ok.intent.shortRef).toBe("0076");
+    const bad = await withFetch({ ...base, short_ref: "<b>1</b>" });
+    expect(bad.ok && bad.intent.shortRef).toBe(null);
+    const old = await withFetch(base);
+    expect(old.ok && old.intent.shortRef).toBe(null);
+  });
+
+  it("stari rail bez polja → null, panel nudi samo QR", async () => {
+    const r = await withFetch(base);
+    expect(r.ok && r.intent.hub3Data).toBeNull();
+  });
+});
+
+describe("fetchIntent — ?uplata=<sid> nakon osvježavanja", () => {
+  const SAFE = "0x00000000000000000000000000000000000000Aa" as const;
+  const body = {
+    sid: "abc123",
+    target_address: SAFE.toLowerCase(),
+    amount_eur: "5.00",
+    memo: "mpt:0xaa?sid=abc123",
+    iban: "EE707777000162921128",
+    beneficiary_name: "ITalk d.o.o.",
+    epc_qr_data: "BCD",
+    status_url: INTENT.statusUrl,
+  };
+  const withFetch = async (status: number, json: object, target: `0x${string}` = SAFE) => {
+    const orig = globalThis.fetch;
+    let url = "";
+    globalThis.fetch = (async (u: string) => {
+      url = u;
+      return new Response(JSON.stringify(json), { status });
+    }) as typeof fetch;
+    try {
+      return { intent: await fetchIntent("abc123", target), url };
+    } finally {
+      globalThis.fetch = orig;
+    }
+  };
+
+  it("vrati isti intent s raila, adresa bez obzira na velika slova", async () => {
+    const { intent, url } = await withFetch(200, body);
+    expect(url).toBe("https://mpt.domovina.ai/api/intents/abc123");
+    expect(intent?.amountEur).toBe("5.00");
+    expect(intent?.statusUrl).toBe(INTENT.statusUrl);
+  });
+
+  it("intent na tuđi Safe → null (ne prikazuje se QR druge elektrane)", async () => {
+    const { intent } = await withFetch(200, body, "0x0000000000000000000000000000000000000001");
+    expect(intent).toBeNull();
+  });
+
+  it("nepostojeći sid (404) → null", async () => {
+    const { intent } = await withFetch(404, { error: "intent_not_found" });
+    expect(intent).toBeNull();
+  });
+});

@@ -1,0 +1,468 @@
+/**
+ * MPT payment intent iz preglednika — isti ugovor koji koriste rail checkout
+ * (`pay.domovina.ai/backend/src/checkout/page.ts`) i domovina.ai/c/…/support.
+ * `POST /api/intents` stvori intent; status stiže SSE-om s
+ * `/api/intents/:sid/stream` (pay.domovina.ai ADR 0017 §SSE) u trenutku
+ * Monerium webhooka, a `GET status_url` svake 2 s je rezerva dok stream nije
+ * spojen ili kad padne (`watchIntentStatus`).
+ *
+ * Faze (`intents/stage.ts`): awaiting_payment → received_processing (Monerium je
+ * ZAPRIMIO SEPA — „uplata je stigla", i kad prva uplata čeka provjeru) → minted →
+ * forwarding → settled (EURe na Safeu elektrane); ili rejected / expired.
+ *
+ * Preduvjeti na railu: `energy.domovina.ai` u `ALLOWED_ORIGINS` i Safe registriran
+ * kao kampanja (whitelist). Nova domena ovdje = nova stavka u CSP-u.
+ *
+ * Profil raila (`lib/rail-profile`) bira tenant: bez ključa rail uzme zadani
+ * `italk`, s `pk_` ključem tenant tog ključa (sandbox /sandbox/ → `italk-sandbox`).
+ */
+import { RAIL_API_BASE, type Address } from "@/lib/beta-projects";
+import { RAIL_ITALK, type RailProfile } from "@/lib/rail-profile";
+
+export interface PaymentIntent {
+  sid: string;
+  amountEur: string;
+  memo: string;
+  iban: string;
+  beneficiaryName: string;
+  bic: string | null;
+  /** EPC tekst koji je rail sastavio — QR se crta iz njega, ne iz našeg koda. */
+  epcQrData: string;
+  /**
+   * HUB3 tekst (PDF417 barkod hrvatske uplatnice) koji je rail sastavio, za
+   * aplikacije koje skeniraju samo uplatnice (Aircash „Slikaj i plati“).
+   * `null` dok rail polje ne šalje ili kad IBAN ne stane u HUB3.
+   */
+  hub3Data: string | null;
+  /**
+   * Kratka referenca intenta (rail ADR 0028): 3 znamenke + Damm kontrolna, npr. „0076".
+   * Kad Revolut ispusti dugi opis, uplatitelj upiše samo nju. `null` dok rail polje ne šalje.
+   */
+  shortRef: string | null;
+  statusUrl: string;
+  expiresAt: string;
+}
+
+export type IntentResult =
+  | { ok: true; intent: PaymentIntent }
+  | { ok: false; reason: "not_whitelisted" | "invalid_amount" | "sid_conflict" | "network" | "unknown" };
+
+export type IntentStage =
+  | "awaiting_payment"
+  | "received_processing"
+  | "minted"
+  | "forwarding"
+  | "settled"
+  | "rejected"
+  | "expired";
+
+/**
+ * Railov korak (`intents/stage.ts` `StageStep`): tko drži novac i kad je korak
+ * dokazan. `at` je Unix sekunda iz Moneriuma ili lanca, ne vrijeme preglednika.
+ */
+export type IntentStepKey = "payment" | "processing" | "minted" | "forwarding" | "settled";
+export type IntentStepStatus = "proven" | "in_progress" | "waiting" | "failed";
+
+export interface IntentStep {
+  key: IntentStepKey;
+  status: IntentStepStatus;
+  at: number | null;
+  /** Mint može imati više transakcija; forward i settled jednu. */
+  txHashes: string[];
+}
+
+export interface IntentStatus {
+  stage: IntentStage;
+  /** Prazno dok rail ne pošalje `status.steps` (stariji rail) — tada panel crta zamjenske korake. */
+  steps: IntentStep[];
+  /**
+   * Transakcija kojom je EURe stigao na Safe primatelja: forward, a u izravnom
+   * načinu (`forward_error: "direct_mint"`, rail ADR 0025) zadnji mint, jer forwarda
+   * nema. Po njoj se zaprimljena uplata upari s prijenosom na lancu
+   * (`unconfirmedCents`); bez nje bi se ista uplata zbrojila dvaput.
+   */
+  forwardTxHash: string | null;
+  /**
+   * Railova procjena (`status.review_expected`): vjerojatno prva uplata s tog
+   * IBAN-a, koju Monerium provjerava prije minta (od minute do ~8 h). Procjena
+   * iz povijesti naloga, ne Moneriumova odluka — tekst to ne smije zvati „AML".
+   */
+  reviewExpected: boolean | null;
+  /**
+   * Rail `status.forward_error === "direct_owed"` (rail ADR 0026, D4): EURe je
+   * izdan na glavni Safe tenanta, ne izravno na Safe elektrane. Rail ne potpisuje,
+   * pa prijenos čeka vlasnike (2-od-3) ili ProjectRouter. Nije „par sekundi".
+   */
+  forwardOwed: boolean;
+}
+
+/** Kao checkout: uplata je „stigla" čim je Monerium zaprimi, prije minta. */
+export function isReceived(stage: IntentStage): boolean {
+  return stage === "received_processing" || stage === "minted" || stage === "forwarding";
+}
+
+export function isTerminal(stage: IntentStage): boolean {
+  return stage === "settled" || stage === "rejected" || stage === "expired";
+}
+
+interface IntentJson {
+  sid?: string;
+  target_address?: string;
+  amount_eur?: string;
+  memo?: string;
+  iban?: string;
+  beneficiary_name?: string;
+  bic?: string | null;
+  epc_qr_data?: string;
+  hub3_data?: string | null;
+  short_ref?: string | null;
+  status_url?: string;
+  expires_at?: string;
+  state?: string;
+  forward_tx_hash?: string | null;
+  status?: {
+    stage?: IntentStage;
+    steps?: { key?: string; status?: string; at?: number | null; tx_hash?: string | null; tx_hashes?: string[] }[];
+    review_expected?: boolean | null;
+    forward_tx_hash?: string | null;
+    forward_error?: string | null;
+  };
+  error?: string;
+}
+
+/**
+ * `receiptSid` (docs/16 §3.2): `sid` izveden iz ključa uplatitelja postaje sid
+ * intenta, pa ga `memo` i EPC QR nose u opisu naloga. `409` = taj `sid` već
+ * postoji; pozivatelj napravi novi ključ (`createReceiptIntent`).
+ */
+export async function createPaymentIntent(
+  target: Address,
+  amountEur: number,
+  opts: { receiptSid?: string; rail?: RailProfile } = {},
+): Promise<IntentResult> {
+  const rail = opts.rail ?? RAIL_ITALK;
+  let res: Response;
+  try {
+    res = await fetch(rail.apiBase, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(rail.tenantKey !== null ? { authorization: `Bearer ${rail.tenantKey}` } : {}),
+      },
+      body: JSON.stringify({
+        target_address: target,
+        amount_eur: amountEur.toFixed(2),
+        ...(opts.receiptSid !== undefined ? { sid: opts.receiptSid } : {}),
+      }),
+    });
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+  const b = (await res.json().catch(() => ({}))) as IntentJson;
+  const intent = res.ok ? intentFromJson(b, amountEur.toFixed(2)) : null;
+  if (intent !== null) return { ok: true, intent };
+  if (res.status === 409 || b.error === "sid_already_exists") return { ok: false, reason: "sid_conflict" };
+  if (b.error === "target_not_whitelisted" || b.error === "target_not_campaign") return { ok: false, reason: "not_whitelisted" };
+  if (b.error === "invalid_amount_eur" || b.error === "amount_out_of_range") return { ok: false, reason: "invalid_amount" };
+  return { ok: false, reason: "unknown" };
+}
+
+/** Intent iz railova odgovora (POST ili `GET /api/intents/<sid>`, isti oblik); `null` kad nije potpun. */
+export function intentFromJson(b: IntentJson, fallbackAmountEur: string): PaymentIntent | null {
+  if (!(b.sid && b.epc_qr_data && b.status_url && b.memo && b.iban && b.beneficiary_name)) return null;
+  return {
+    sid: b.sid,
+    amountEur: b.amount_eur ?? fallbackAmountEur,
+    memo: b.memo,
+    iban: b.iban,
+    beneficiaryName: b.beneficiary_name,
+    bic: b.bic ?? null,
+    epcQrData: b.epc_qr_data,
+    hub3Data: b.hub3_data ?? null,
+    shortRef: typeof b.short_ref === "string" && /^\d{4,}$/.test(b.short_ref) ? b.short_ref : null,
+    statusUrl: b.status_url,
+    expiresAt: b.expires_at ?? "",
+  };
+}
+
+/**
+ * Postojeći intent po sidu — za `?uplata=<sid>` u adresi, da osvježavanje stranice
+ * ne traži novi intent. `null` kad ga nema ili ne ide na `target` (tuđi Safe).
+ */
+export async function fetchIntent(
+  sid: string,
+  target: Address,
+  signal?: AbortSignal,
+  rail: RailProfile = RAIL_ITALK,
+): Promise<PaymentIntent | null> {
+  const res = await fetch(`${rail.apiBase}/${encodeURIComponent(sid)}`, { signal });
+  if (!res.ok) return null;
+  const b = (await res.json()) as IntentJson;
+  if (typeof b.target_address !== "string" || b.target_address.toLowerCase() !== target.toLowerCase()) return null;
+  return intentFromJson(b, "");
+}
+
+/**
+ * Isti oblik dolazi iz `GET status_url` i iz SSE eventa (`{sid, state, status}`,
+ * gdje je `status` bajt-identičan pollingu). Zamjenski izbor faze kad `status`
+ * izostane je isti kao u checkoutu.
+ */
+export function statusFromJson(b: IntentJson): IntentStatus {
+  const stage: IntentStage =
+    b.status?.stage ?? (b.state === "paid" ? "settled" : b.state === "expired" ? "expired" : "awaiting_payment");
+  const steps = parseSteps(b.status?.steps);
+  const directMintTx =
+    b.status?.forward_error === "direct_mint"
+      ? (steps.find((st) => st.key === "minted")?.txHashes.at(-1) ?? null)
+      : null;
+  return {
+    stage,
+    steps,
+    forwardTxHash: b.forward_tx_hash ?? b.status?.forward_tx_hash ?? directMintTx,
+    reviewExpected: b.status?.review_expected ?? null,
+    forwardOwed: b.status?.forward_error === "direct_owed",
+  };
+}
+
+const STEP_KEYS: readonly string[] = ["payment", "processing", "minted", "forwarding", "settled"];
+const STEP_STATUSES: readonly string[] = ["proven", "in_progress", "waiting", "failed"];
+
+function parseSteps(raw: NonNullable<IntentJson["status"]>["steps"]): IntentStep[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((r) =>
+    r && typeof r.key === "string" && STEP_KEYS.includes(r.key) && typeof r.status === "string" &&
+    STEP_STATUSES.includes(r.status)
+      ? [
+          {
+            key: r.key as IntentStepKey,
+            status: r.status as IntentStepStatus,
+            at: typeof r.at === "number" ? r.at : null,
+            txHashes: [...(r.tx_hashes ?? []), ...(r.tx_hash ? [r.tx_hash] : [])].filter(
+              (h): h is string => typeof h === "string" && h.length > 0,
+            ),
+          },
+        ]
+      : [],
+  );
+}
+
+export async function fetchIntentStatus(statusUrl: string, signal: AbortSignal): Promise<IntentStatus> {
+  const res = await fetch(statusUrl, { signal });
+  if (!res.ok) throw new Error(String(res.status));
+  return statusFromJson((await res.json()) as IntentJson);
+}
+
+export const intentStreamUrl = (sid: string) => `${RAIL_API_BASE}/${encodeURIComponent(sid)}/stream`;
+
+export type SandboxTransferResult =
+  | { ok: true }
+  | { ok: false; reason: "too_soon" | "not_pending" | "monerium" | "network" | "unknown" };
+
+/**
+ * Simulirana SEPA uplata za intent na Monerium sandboxu (rail
+ * `monerium/sandboxFund.ts`). Monerium glumi samo banku: nalog iznosa intenta s
+ * referencom intenta na IBAN tenanta. Order, webhook, mint na Chiadu i status
+ * dalje idu pravim putem, pa ih `watchIntentStatus` prati kao svaku uplatu.
+ * Rail odbija svaki intent koji nije na sandbox tenantu (404), pa ovo ne može
+ * pomaknuti pravi novac.
+ */
+export async function simulateSandboxTransfer(sid: string, rail: RailProfile): Promise<SandboxTransferResult> {
+  if (!rail.sandbox) return { ok: false, reason: "unknown" };
+  let res: Response;
+  try {
+    res = await fetch(`${rail.apiBase}/${encodeURIComponent(sid)}/monerium-sandbox-transfer`, { method: "POST" });
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+  if (res.ok) return { ok: true };
+  const b = (await res.json().catch(() => ({}))) as { error?: string };
+  if (b.error === "already_sent") return { ok: false, reason: "too_soon" };
+  if (b.error === "intent_not_pending") return { ok: false, reason: "not_pending" };
+  if (b.error === "monerium_fund_failed") return { ok: false, reason: "monerium" };
+  return { ok: false, reason: "unknown" };
+}
+
+/** Kako status trenutno stiže — za `data-transport` na panelu i provjeru u pregledniku. */
+export type IntentTransport = "sse" | "poll";
+
+/** Ono što `watchIntentStatus` treba od `EventSource` — u testu se podmeće. */
+export interface StreamSource {
+  readonly readyState: number;
+  addEventListener(type: "stage", listener: (ev: { data: string }) => void): void;
+  onerror: ((ev: unknown) => void) | null;
+  close(): void;
+}
+
+export interface WatchDeps {
+  openStream: ((url: string) => StreamSource) | null;
+  fetchStatus: (statusUrl: string, signal: AbortSignal) => Promise<IntentStatus>;
+  setTimeout: (fn: () => void, ms: number) => number;
+  clearTimeout: (id: number) => void;
+  now: () => number;
+  /**
+   * Javlja povratak na stranicu (kartica opet vidljiva). Vraća odjavu.
+   * Na istom mobitelu uplatitelj iz Revoluta skoči natrag tek nakon „Send";
+   * iOS je dotad uspavao SSE i timere, pa bez ovoga promjena čeka ponovno
+   * spajanje streama ili sljedeći krug pollinga.
+   */
+  onVisible?: (fn: () => void) => () => void;
+}
+
+export const POLL_MS = 2_000;
+const CLOSED = 2;
+
+function browserDeps(): WatchDeps {
+  return {
+    openStream: typeof EventSource === "undefined" ? null : (url) => new EventSource(url) as unknown as StreamSource,
+    fetchStatus: fetchIntentStatus,
+    setTimeout: (fn, ms) => window.setTimeout(fn, ms),
+    clearTimeout: (id) => window.clearTimeout(id),
+    now: () => Date.now(),
+    onVisible: (fn) => {
+      const h = () => {
+        if (document.visibilityState === "visible") fn();
+      };
+      document.addEventListener("visibilitychange", h);
+      return () => document.removeEventListener("visibilitychange", h);
+    },
+  };
+}
+
+const sameSteps = (a: readonly IntentStep[], b: readonly IntentStep[]) =>
+  a.length === b.length &&
+  a.every((s, i) => s.key === b[i]!.key && s.status === b[i]!.status && s.at === b[i]!.at &&
+    s.txHashes.join() === b[i]!.txHashes.join());
+
+const sameStatus = (a: IntentStatus, b: IntentStatus) =>
+  a.stage === b.stage && a.forwardTxHash === b.forwardTxHash && a.reviewExpected === b.reviewExpected &&
+  a.forwardOwed === b.forwardOwed && sameSteps(a.steps, b.steps);
+
+/**
+ * Koliko se još prati `settled` bez hasha forwarda. Rail uplatu bez reference
+ * (Revolut) proglasi `settled` čim Monerium minta na glavni Safe, jer iz praznog
+ * opisa zaključi da forwarda nema — a ProjectRouter je prebaci na Safe elektrane
+ * tek nekoliko sekundi kasnije (izmjereno 19.10.2026.: 6 s). Bez ovoga panel ne
+ * dobije hash forwarda, a stranica ne zna kad ponovno pročitati lanac.
+ */
+export const SETTLED_GRACE_MS = 120_000;
+
+/**
+ * Prati status intenta dok ne dođe do završne faze. Obrazac je railov checkout
+ * (`checkout/page.ts` `startStream`): polling i stream kreću zajedno, prvi SSE
+ * event gasi polling, greška streama ga vraća. Tako nema rupe ni kad je SSE na
+ * railu isključen (404) ni kad preglednik nema `EventSource`.
+ *
+ * `onStatus` se zove samo kad se status promijeni — ne pri svakom odgovoru
+ * (refactor R4.2: `savePending` je pisao `localStorage` svake 2 s).
+ * Vraća funkciju za gašenje.
+ */
+export function watchIntentStatus(
+  intent: Pick<PaymentIntent, "sid" | "statusUrl">,
+  onStatus: (s: IntentStatus) => void,
+  onTransport: (t: IntentTransport) => void = () => {},
+  deps: WatchDeps = browserDeps(),
+): () => void {
+  const controller = new AbortController();
+  let timer: number | undefined;
+  let polling = false;
+  let done = false;
+  let last: IntentStatus | null = null;
+  let settledAt: number | null = null;
+  let stream: StreamSource | null = null;
+  const cleanups: (() => void)[] = [];
+
+  const stop = () => {
+    done = true;
+    controller.abort();
+    if (timer !== undefined) deps.clearTimeout(timer);
+    stream?.close();
+    for (const off of cleanups) off();
+  };
+
+  const apply = (s: IntentStatus) => {
+    if (done) return;
+    if (last === null || !sameStatus(last, s)) {
+      last = s;
+      onStatus(s);
+    }
+    if (!isTerminal(s.stage)) return;
+    if (s.stage !== "settled" || s.forwardTxHash !== null) return stop();
+    // `settled` bez forwarda: stream se na railu zatvorio (onerror → polling), još
+    // malo slušamo hoće li stići forward. Direktan mint ga nikad nema — zato rok.
+    const now = deps.now();
+    settledAt ??= now;
+    if (now - settledAt >= SETTLED_GRACE_MS) stop();
+  };
+
+  const poll = () => {
+    if (!polling || done) return;
+    deps.fetchStatus(intent.statusUrl, controller.signal).then(
+      (s) => {
+        apply(s);
+        if (polling && !done) timer = deps.setTimeout(poll, POLL_MS);
+      },
+      () => {
+        // Prolazna greška mreže: pokušaj ponovno, prikaz ostaje kakav jest.
+        if (polling && !done) timer = deps.setTimeout(poll, POLL_MS);
+      },
+    );
+  };
+
+  const startPolling = () => {
+    if (polling || done) return;
+    polling = true;
+    onTransport("poll");
+    poll();
+  };
+
+  const stopPolling = () => {
+    polling = false;
+    if (timer !== undefined) deps.clearTimeout(timer);
+    timer = undefined;
+  };
+
+  startPolling();
+
+  // Povratak iz aplikacije banke: jedan dohvat odmah, ne čeka stream ni timer.
+  if (deps.onVisible) {
+    cleanups.push(
+      deps.onVisible(() => {
+        if (done) return;
+        deps.fetchStatus(intent.statusUrl, controller.signal).then(apply, () => {});
+      }),
+    );
+  }
+
+  if (deps.openStream !== null) {
+    try {
+      stream = deps.openStream(intentStreamUrl(intent.sid));
+    } catch {
+      stream = null;
+    }
+    if (stream !== null) {
+      const es = stream;
+      es.addEventListener("stage", (ev) => {
+        let b: IntentJson;
+        try {
+          b = JSON.parse(ev.data) as IntentJson;
+        } catch {
+          return;
+        }
+        if (polling) {
+          stopPolling();
+          onTransport("sse");
+        }
+        apply(statusFromJson(b));
+      });
+      es.onerror = () => {
+        if (done) return;
+        // CLOSED: rail je odbio (404 dok je SSE isključen) — od sad samo polling.
+        // CONNECTING: EventSource se sam ponovno spaja; dotad polling.
+        startPolling();
+        if (es.readyState === CLOSED) es.close();
+      };
+    }
+  }
+
+  return stop;
+}

@@ -41,6 +41,22 @@
 	--font-serif: var(--font-fraunces);
 	--shadow-card: 0 10px 30px -18px rgba(0, 30, 80, 0.22);
 	--shadow-lift: 0 24px 60px -28px rgba(0, 30, 80, 0.28);
+
+	/* Tokeni komponenti prenesenih iz energy.domovina.ai (components/beta, /support):
+	   ista imena klasa, MPT boje — izgled je MPT, raspored i ponašanje energy. */
+	--color-inkSoft: #3b4a60;
+	--color-inkMuted: var(--mute);
+	--color-forest: var(--navy);
+	--color-forest-700: var(--navy-700);
+	--color-cream: #ffffff;
+	--color-sand: var(--soft);
+	--color-sandDeep: var(--gold-soft);
+	--color-rust: var(--red);
+	--color-solar: var(--gold);
+	--color-solar-soft: var(--gold-soft);
+	--font-display: var(--font-fraunces);
+	--text-display-md: 2.25rem;
+	--text-display-md--line-height: 1.15;
 }
 
 html {
@@ -53,4 +69,12 @@ body {
 	font-family: var(--font-inter), Inter, system-ui, sans-serif;
 	line-height: 1.6;
 	-webkit-font-smoothing: antialiased;
+}
+
+/* energy `container-wide` (components/beta) */
+@utility container-wide {
+	margin-inline: auto;
+	width: 100%;
+	max-width: 80rem;
+	padding-inline: 1.5rem;
 }
