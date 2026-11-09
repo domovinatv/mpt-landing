@@ -61,7 +61,7 @@ export const CROWDFUND_SANDBOX: CrowdfundRail = {
 	key: "sandbox",
 	tenant: "italk-sandbox",
 	campaignId: "mpt-crowdfunding",
-	safe: null,
+	safe: "0x9392491B40232C4C9411449A2f350F1647b72fdA", // Chiado, 2/3, izrađen 9. 11. 2026. (admin setup)
 	chainName: "Chiado",
 	explorer: "https://gnosis-chiado.blockscout.com",
 	blockscoutApi: "https://gnosis-chiado.blockscout.com/api/v2",
