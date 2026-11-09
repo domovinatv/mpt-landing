@@ -34,6 +34,16 @@ const hr = {
 			description:
 				"Fiksne naknade kartica i bankovnih naloga čine mikrouplate najskupljima. Usporedba naknada po kanalu i zašto rail bez fiksnog dijela ima smisla za lokalnu ekonomiju.",
 		},
+		support: {
+			title: "Podrži MPT — crowdfunding MPT-a kroz MPT",
+			description:
+				"MPT je otvoren kod (MIT) koji razvija ITalk d.o.o. Podrži njegov razvoj uplatom iz banke — i usput vidi cijeli MPT tok uživo: zaprimljeno, paid, EURe na Safeu kampanje.",
+		},
+		supportSandbox: {
+			title: "Podrži MPT (sandbox) — isti tok bez pravog novca",
+			description:
+				"Isprobaj crowdfunding MPT-a kroz MPT na Monerium sandboxu i Chiadu: isti kod i isti checkout, simulirana SEPA uplata, testni EURe.",
+		},
 	},
 	nav: {
 		how: "Kako radi",
@@ -574,6 +584,86 @@ const hr = {
 		testsNote:
 			"Isti state machine pokreće i automatske testove: svaki scenarij dokazuje da kupac odnosno korisnik plaća 0 € i da se iznosi čuvaju 1:1 na svakom koraku.",
 	},
+	support: {
+		eyebrow: "Podrži MPT",
+		title: "Financiraj MPT kroz MPT",
+		subtitle:
+			"MPT je otvoren kod (MIT) iza kojeg stoji jedan developer u ITalku. Uplatom iz banke podržavaš njegov razvoj — i usput vidiš cijeli MPT tok uživo, kao kupac kod trgovca: zaprimljeno, paid, EURe na Safeu kampanje.",
+		sandboxEyebrow: "Podrži MPT · sandbox",
+		sandboxTitle: "Isti tok, bez pravog novca",
+		sandboxSubtitle:
+			"Sandbox koristi isti kod, isti rail i isti checkout, ali Monerium sandbox i testni EURe na Chiadu. Na checkoutu gumb simulira SEPA uplatu, a sve iza toga je pravi put raila: Monerium nalog, webhook, mint, stanje uživo.",
+		toSandbox: "Isprobaj bez pravog novca (sandbox)",
+		toProd: "Natrag na pravu kampanju",
+		howTitle: "Što se dogodi kad uplatiš",
+		how: [
+			{
+				title: "Odabereš iznos",
+				body: "Stranica stvori MPT payment intent na railu (tenant ITalk) — isti API koji trgovac zove iz svog checkouta.",
+			},
+			{
+				title: "Platiš iz banke",
+				body: "Railov checkout pokaže QR (EPC i HUB3 uplatnica) s Monerium IBAN-om ITalka i referencom gnosis:0x<Safe> sid:<intent>.",
+			},
+			{
+				title: "Zaprimljeno → paid",
+				body: "Monerium zaprimi SEPA uplatu, MPT je upari s intentom i checkout to pokaže uživo (~12 s do paid nakon zaprimanja). Prva uplata s novog IBAN-a može čekati Moneriumov pregled.",
+			},
+			{
+				title: "EURe na Safeu kampanje",
+				body: "Monerium minta EURe izravno u Safe kampanje (multisig 2/3). MPT novac ne drži, a svaka uplata je javno vidljiva na lancu.",
+			},
+		],
+		useTitle: "Na što ide novac",
+		use: [
+			"Održavanje jezgre: intenti i webhookovi, povrati i dopunske uplate, istek intenta, resolver uplata bez reference.",
+			"Sigurnost: nadogradnje ovisnosti i popravci iz vanjskog sigurnosnog pregleda.",
+			"Infrastruktura: Cloudflare Workers i D1, gas za ProjectRouter.",
+		],
+		honestTitle: "Iskreno",
+		honest: [
+			"Primatelj je ITalk d.o.o. (Zagreb). Ovo je podrška razvoju, ne donacija u poreznom smislu: nije porezno priznata, a ITalk je knjiži kao prihod.",
+			"Za uplatu ne dobivaš udio, prinos ni protuuslugu.",
+			"MPT-u ne plaćaš ništa. Iz klasične hrvatske banke plaćaš svojoj banci naknadu za nalog (0,25–0,45 €); s Revoluta je uplata besplatna.",
+			"Kod je otvoren (MIT): tko želi, istu stranicu i rail pokrene za svoj projekt. Za pogrešnu uplatu javi se na ms@mpt.hr.",
+		],
+		widget: {
+			title: "Odaberi iznos",
+			lead: "Nakon klika otvara se MPT checkout s QR kodom za uplatu iz banke i stanjem uživo.",
+			amountLabel: "Iznos",
+			customLabel: "Ili upiši svoj iznos",
+			pay: "Podrži s {amount}",
+			busy: "Otvaram checkout…",
+			notReady:
+				"Kampanja je u pripremi: Safe kampanje još nije izrađen i registriran na railu. Uplata će biti moguća čim bude.",
+			notes: [
+				"Uplata ide na Monerium IBAN ITalka, a Monerium minta EURe izravno u Safe kampanje.",
+				"Checkout vrijedi 15 minuta; nakon toga ponovno odaberi iznos.",
+			],
+			payerTagNotice:
+				"Uz uplatu se javno prikazuju inicijali i zadnja 4 znaka IBAN-a (npr. „M. S. ··1234”), nikad puno ime ni IBAN.",
+			raisedLabel: "Prikupljeno",
+			raisedSub: "{count} uplata · {chain}",
+			raisedEmpty: "Zbroj se prikazuje kad kampanja krene.",
+			loading: "Čitam lanac…",
+			pending: "+ {amount} zaprimljeno, čeka mint",
+			goal: "{pct} % od cilja {goal}",
+			readError: "Stanje trenutno nije dostupno; pokušavam ponovno.",
+			listTitle: "Zadnje uplate",
+			listEmpty: "Još nema uplata. Budi prvi.",
+			anonymous: "Uplata",
+			stateMinted: "na lancu",
+			stateReceived: "zaprimljeno",
+			safeLink: "Safe kampanje ({chain})",
+			errors: {
+				not_campaign: "Kampanja još nije registrirana na railu. Pokušaj kasnije ili javi na ms@mpt.hr.",
+				invalid_amount: "Iznos mora biti veći od 0 € i najviše {max} €.",
+				too_many_open: "Trenutno je otvoreno previše uplata; pokušaj za nekoliko minuta.",
+				network: "Rail nije dostupan; provjeri vezu i pokušaj ponovno.",
+				unknown: "Nešto nije u redu s railom; pokušaj ponovno ili javi na ms@mpt.hr.",
+			},
+		},
+	},
 	cta: {
 		title: "Želiš primati uplate preko MPT-a?",
 		subtitle:
@@ -581,6 +671,7 @@ const hr = {
 		emailLead: "ili izravno na",
 		community: { label: "Pitanja i zajednica: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		github: { label: "Kod na GitHubu", href: "https://github.com/domovinatv/pay.domovina.ai" },
+		support: { label: "Podrži razvoj MPT-a", href: "/hr/support" },
 	},
 	footer: {
 		columns: [
@@ -594,6 +685,7 @@ const hr = {
 					{ label: "Tok novca i simulacije", href: "/flow" },
 					{ label: "Zašto danas", href: "/why" },
 					{ label: "Stanje", href: "/#status" },
+					{ label: "Podrži MPT", href: "/support" },
 				],
 			},
 			{
@@ -649,6 +741,16 @@ const en: typeof hr = {
 			title: "Why now — MPT",
 			description:
 				"Fixed card and bank-order fees make micropayments the most expensive ones. A fee comparison per channel and why a rail with no fixed component makes sense for a local economy.",
+		},
+		support: {
+			title: "Support MPT — crowdfunding MPT through MPT",
+			description:
+				"MPT is open source (MIT), built by ITalk d.o.o. Support its development with a bank payment — and watch the whole MPT flow live: received, paid, EURe in the campaign Safe.",
+		},
+		supportSandbox: {
+			title: "Support MPT (sandbox) — the same flow without real money",
+			description:
+				"Try crowdfunding MPT through MPT on Monerium's sandbox and Chiado: the same code and checkout, a simulated SEPA transfer, test EURe.",
 		},
 	},
 	nav: {
@@ -1190,6 +1292,86 @@ const en: typeof hr = {
 		testsNote:
 			"The same state machine also powers automated tests: every scenario proves the buyer or user pays €0 and amounts are conserved 1:1 at every step.",
 	},
+	support: {
+		eyebrow: "Support MPT",
+		title: "Fund MPT through MPT",
+		subtitle:
+			"MPT is open source (MIT), built by one developer at ITalk. A bank payment supports its development — and shows you the whole MPT flow live, just like a buyer at a merchant: received, paid, EURe in the campaign Safe.",
+		sandboxEyebrow: "Support MPT · sandbox",
+		sandboxTitle: "The same flow, no real money",
+		sandboxSubtitle:
+			"The sandbox runs the same code, rail and checkout, on Monerium's sandbox with test EURe on Chiado. A button on the checkout simulates the SEPA transfer; everything after it is the rail's real path: Monerium order, webhook, mint, live status.",
+		toSandbox: "Try it without real money (sandbox)",
+		toProd: "Back to the real campaign",
+		howTitle: "What happens when you pay",
+		how: [
+			{
+				title: "You pick an amount",
+				body: "The page creates an MPT payment intent on the rail (tenant ITalk) — the same API a merchant calls from its checkout.",
+			},
+			{
+				title: "You pay from your bank",
+				body: "The rail's checkout shows a QR code (EPC and Croatian HUB3) with ITalk's Monerium IBAN and the reference gnosis:0x<Safe> sid:<intent>.",
+			},
+			{
+				title: "Received → paid",
+				body: "Monerium receives the SEPA transfer, MPT matches it to the intent and the checkout shows it live (~12 s to paid after receipt). A first payment from a new IBAN can wait for Monerium's review.",
+			},
+			{
+				title: "EURe in the campaign Safe",
+				body: "Monerium mints EURe straight into the campaign Safe (a 2-of-3 multisig). MPT never holds the money, and every payment is public on chain.",
+			},
+		],
+		useTitle: "Where the money goes",
+		use: [
+			"Core maintenance: intents and webhooks, refunds and top-up payments, intent expiry, the resolver for payments without a reference.",
+			"Security: dependency updates and fixes from an external security review.",
+			"Infrastructure: Cloudflare Workers and D1, gas for the ProjectRouter.",
+		],
+		honestTitle: "Honestly",
+		honest: [
+			"The recipient is ITalk d.o.o. (Zagreb). This is support for development, not a donation in the tax sense: it is not tax-deductible and ITalk books it as revenue.",
+			"A payment gives you no share, return or service in exchange.",
+			"You pay MPT nothing. From a classic Croatian bank you pay your bank its transfer fee (€0.25–0.45); from Revolut the payment is free.",
+			"The code is open (MIT): anyone can run this page and the rail for their own project. For a mistaken payment, write to ms@mpt.hr.",
+		],
+		widget: {
+			title: "Pick an amount",
+			lead: "The next click opens the MPT checkout with a QR code for a bank payment and live status.",
+			amountLabel: "Amount",
+			customLabel: "Or enter your own amount",
+			pay: "Support with {amount}",
+			busy: "Opening checkout…",
+			notReady:
+				"The campaign is being set up: its Safe is not yet created and registered on the rail. Payments open as soon as it is.",
+			notes: [
+				"The payment goes to ITalk's Monerium IBAN, and Monerium mints EURe straight into the campaign Safe.",
+				"The checkout is valid for 15 minutes; after that, pick the amount again.",
+			],
+			payerTagNotice:
+				"Each payment is shown publicly with initials and the last 4 characters of the IBAN (e.g. “M. S. ··1234”), never the full name or IBAN.",
+			raisedLabel: "Raised",
+			raisedSub: "{count} payments · {chain}",
+			raisedEmpty: "The total shows once the campaign starts.",
+			loading: "Reading the chain…",
+			pending: "+ {amount} received, waiting for mint",
+			goal: "{pct}% of the {goal} goal",
+			readError: "Status is unavailable right now; retrying.",
+			listTitle: "Latest payments",
+			listEmpty: "No payments yet. Be the first.",
+			anonymous: "Payment",
+			stateMinted: "on chain",
+			stateReceived: "received",
+			safeLink: "Campaign Safe ({chain})",
+			errors: {
+				not_campaign: "The campaign is not registered on the rail yet. Try later or write to ms@mpt.hr.",
+				invalid_amount: "The amount must be above €0 and at most €{max}.",
+				too_many_open: "Too many open payments right now; try again in a few minutes.",
+				network: "The rail is unreachable; check your connection and try again.",
+				unknown: "Something is wrong with the rail; try again or write to ms@mpt.hr.",
+			},
+		},
+	},
 	cta: {
 		title: "Want to accept payments through MPT?",
 		subtitle:
@@ -1197,6 +1379,7 @@ const en: typeof hr = {
 		emailLead: "or write directly to",
 		community: { label: "Questions and community: t.me/mpt_hr", href: "https://t.me/mpt_hr" },
 		github: { label: "Code on GitHub", href: "https://github.com/domovinatv/pay.domovina.ai" },
+		support: { label: "Support MPT development", href: "/en/support" },
 	},
 	footer: {
 		columns: [
@@ -1210,6 +1393,7 @@ const en: typeof hr = {
 					{ label: "Money flow & simulations", href: "/flow" },
 					{ label: "Why now", href: "/why" },
 					{ label: "Status", href: "/#status" },
+					{ label: "Support MPT", href: "/support" },
 				],
 			},
 			{

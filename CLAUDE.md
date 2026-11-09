@@ -40,6 +40,7 @@ ali na `/flow` i `/why`, ne na naslovnici.
 | `/{hr,en}/flow` | tok novca (4 koraka + napomene) + dijagram i simulacije |
 | `/{hr,en}/pricing` | 3 plana · kalkulator (`SavingsCalculator`) · FAQ |
 | `/{hr,en}/why` | tablica naknada po kanalu · argumenti · izvor |
+| `/{hr,en}/support` (+ `/sandbox`) | crowdfunding MPT-a kroz MPT: iznos → MPT checkout · prikupljeno · zadnje uplate |
 
 Ispod 1024px inline linkovi se skrivaju; nosi ih `<details>` izbornik bez JS-a u navu.
 Zajednički dijelovi (nav, footer, CTA traka, `pageMetadata`, `localHref`) su u
@@ -66,6 +67,23 @@ Od 11. 10. 2026. razrada za globalni opis (teza, pseći rječnik, copy, rizici i
 dnevnik odluka) živi u zasebnom javnom repou **github.com/revenuedog/mpt**
 (`~/git/revenuedog/mpt`). Ime „RevenueDog" već koriste tri tuđa projekta; ništa se ne kupuje
 (domene, žig) dok ne postoji kombinacija koju netko kupuje (Matija).
+
+## Kampanja „Podrži MPT" — crowdfunding MPT-a kroz MPT (od 9. 11. 2026.)
+
+`/{hr,en}/support` (pravi novac, tenant `italk`, Gnosis) i `/{hr,en}/support/sandbox`
+(tenant `italk-sandbox`, Monerium sandbox, Chiado) — isti kod, drugi profil u
+`src/lib/crowdfund.ts`. Stranica nema backend: `POST mpt.domovina.ai/api/intents` →
+redirect na railov hostani checkout (`checkout_url`: QR, status uživo, kratka referenca);
+prikupljeno iz `/api/activity` (prod) ili Chiado Blockscouta, oznake uplatitelja iz
+`/api/payers` (samo prod, italk ima `public_payer_tags`). Monerium minta izravno u
+**zaseban** Safe kampanje `mpt-crowdfunding` (ne glavni `0x449a…`, gdje stižu uplate bez
+reference). Dok je `safe` u `crowdfund.ts` `null`, stranica kaže „u pripremi" i ne nudi
+uplatu. `https://mpt.hr` je u railovom `ALLOWED_ORIGINS` (pay.domovina.ai PR #144).
+Safe se izrađuje u adminu raila: `/admin/tenants/<tenant>/setup` → „Dodaj projekt"
+(ADR 0027), za oba tenanta. Copy: „podrška razvoju", ne donacija (ITalk je d.o.o., nije
+porezno priznato); nikad prinos/udio. Cilj (`GOAL_EUR`) je `null` dok Matija ne odluči.
+Puni port energy /beta (in-page QR panel, potvrda PDF, provjera) je zaseban plan:
+`~/.claude/handoffs/mpt-landing/2026-11-09-2006-kampanja-razvoj-mpt-iz-energy-beta.md`.
 
 ## Arhitektura — jedan izvor istine
 

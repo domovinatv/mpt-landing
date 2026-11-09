@@ -28,6 +28,8 @@ export const pagePaths: Record<PageKey, string> = {
 	flow: "/flow",
 	pricing: "/pricing",
 	why: "/why",
+	support: "/support",
+	supportSandbox: "/support/sandbox",
 };
 
 /** "/pricing" → "/hr/pricing", "/#how" → "/hr#how"; external links and mailto pass through */
@@ -234,7 +236,7 @@ export function Cta({ dict }: { dict: Dictionary }) {
 					</a>
 				</p>
 				<p className="mt-5 text-sm text-[#8FA6C9]">
-					{[dict.cta.community, dict.cta.github].map((link, i) => (
+					{[dict.cta.support, dict.cta.community, dict.cta.github].map((link, i) => (
 						<span key={link.href}>
 							{i > 0 && " · "}
 							<a
