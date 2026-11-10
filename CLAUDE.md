@@ -95,6 +95,8 @@ pokazuje uputu za uplatu (invarijanta). Nikad glavni Safe
 kampanje tek kad je projekt u roli ProjectRouter (2/3 potpis plana na setup stranici).
 `https://mpt.hr` je u railovom `ALLOWED_ORIGINS` (pay.domovina.ai PR #144); lokalni preview
 (127.0.0.1:8787) zato ne može stvoriti intent — tok se provjerava na mpt.hr/support/sandbox.
+Prva uplata (1 €, bez reference → ProjectRouter, 17 s do paid) i što je trebalo popraviti:
+`docs/2026-11-10-prva-uplata-podrzi-mpt.md`.
 Copy: „podrška razvoju", ne donacija (ITalk je d.o.o., nije porezno priznato); nikad
 prinos/udio/povrat na ulaganje. Cilj je `null` dok Matija ne odluči.
 
