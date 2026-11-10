@@ -60,10 +60,19 @@ upis cijelog opisa).
    transfer od 0 EURe (pay.domovina.ai #146, ADR 0027 §5); sad 4 projekta prolaze, `dEaD`
    pada u modifieru.
 
+## Imena u Moneriumu (isti dan)
+
+Pravilo (pay.domovina.ai #147, `docs/monerium-private.md`): ime adrese u Moneriumu je točno
+`campaign_id` iz D1, a glavni Safe tenanta zove se `<tenant>-main`. Slug je od malih slova, brojki i
+pojedinačnih crtica. Ovdje: `mpt-crowdfunding-prod` (monerium.app) i `mpt-crowdfunding`
+(sandbox.monerium.dev). Javni API ime ne postavlja, pa se postavlja naredbom iz konzole web
+sučelja (`PATCH /api/addresses/<safe>/config`) za sve Safe-ove obaju tenanata.
+
 ## Otvoreno
 
 - `GET /api/activity/0x022a…` je u trenutku pisanja vraćao `upstream_unavailable`; stranica
   je prikazala uplatu preko rezervnog puta (`/api/payers` + lanac). Pratiti u pay.domovina.ai.
+- Imena u Moneriumu: provjeriti da je naredba u obje konzole vratila 200 (sučelje ih pokaže nakon osvježavanja).
 - Prva uplata s referencom → provjera PDF potvrde (`pdftoppm -png`) i `/support/provjera`.
 - Stari relayer walleta (`RELAYER_PRIVATE_KEY` u Pages projektu `wallet-domovina`) i dalje
   postoji; odlučiti gasi li se i kamo ide njegov xDAI.
