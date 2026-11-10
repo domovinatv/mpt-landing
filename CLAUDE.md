@@ -77,7 +77,7 @@ dnevnik odluka) živi u zasebnom javnom repou **github.com/revenuedog/mpt**
 safe-rpc,pending-*,payer-tags,receipt-*,verify-*,pdf-*,…}.ts` + testovi u
 `src/lib/__tests__/`. Mijenjati ih kao energy, ne prepisivati; kriptografija potvrde je
 kopija raila (zlatne vrijednosti u testovima). Razlike: `lib/beta-projects.ts` drži jednu
-kampanju `mpt-crowdfunding` na dva raila (`CAMPAIGN_PROD`, `CAMPAIGN_SANDBOX`),
+kampanju na dva raila (`campaign_id` je jedinstven preko tenanata: `mpt-crowdfunding-prod` na `italk`, `mpt-crowdfunding` na `italk-sandbox`) (`CAMPAIGN_PROD`, `CAMPAIGN_SANDBOX`),
 `isUsableAddress` je kopiran iz campaign-core (bez ovisnosti), `CampaignSection` u
 `beta-page.tsx` zamjenjuje energy `ProjectSection`, `lib/i18n` je tanak `useT` adapter s
 jezikom iz rute (katalog `lib/i18n/{hr,en}.ts`, samo ključevi koje komponente koriste),
@@ -86,9 +86,11 @@ energy tokeni boja (`forest`, `sand`, `rust`, `solar`…) mapirani su na MPT boj
 
 Safe-ovi kampanje (2/3, ista trojka kao energy projekti), izrađeni u adminu raila
 (`/admin/tenants/<tenant>/setup` → „Dodaj projekt", ADR 0027): sandbox
-`0x9392491B40232C4C9411449A2f350F1647b72fdA`, produkcija predviđena
-`0xd91498E117FcBaE531Af013Ef58483a486Ad8467` (Safe 1.5.0) — dok `CAMPAIGN_PROD.safe` nije
-upisan, `/support` kaže „u pripremi" i ne pokazuje uputu za uplatu. Nikad glavni Safe
+`0x9392491B40232C4C9411449A2f350F1647b72fdA`, produkcija
+`0x022aA53B825054e47e99aa104FbA1E0ce293a47F` (Safe 1.5.0, 10. 11. 2026., Monerium linked;
+deploy platio Gnosis deployer — umirovljeni router `0xd612…54CB` kao worker secret
+`GNOSIS_DEPLOYER_PRIVATE_KEY`). Bez `CAMPAIGN_PROD.safe` `/support` kaže „u pripremi" i ne
+pokazuje uputu za uplatu (invarijanta). Nikad glavni Safe
 `0x449a…` (tamo stižu uplate bez reference). Uplate bez reference (Revolut) stižu na Safe
 kampanje tek kad je projekt u roli ProjectRouter (2/3 potpis plana na setup stranici).
 `https://mpt.hr` je u railovom `ALLOWED_ORIGINS` (pay.domovina.ai PR #144); lokalni preview

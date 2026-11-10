@@ -72,8 +72,9 @@ export interface BetaProject {
 export const CAMPAIGN_PROD: BetaProject = {
 	slug: "mpt",
 	place: "Razvoj MPT-a",
-	campaignId: "mpt-crowdfunding",
-	safe: null,
+	// campaign_id je jedinstven preko svih tenanata; "mpt-crowdfunding" je sandboxov.
+	campaignId: "mpt-crowdfunding-prod",
+	safe: "0x022aA53B825054e47e99aa104FbA1E0ce293a47F",
 	signers: OWNER_SIGNERS,
 	goalCents: null,
 	payment: MPT_INTENT,

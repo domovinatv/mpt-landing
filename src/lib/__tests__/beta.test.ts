@@ -112,7 +112,7 @@ describe("beta: iznosi s lanca", () => {
 describe("support: kampanja razvoja MPT-a", () => {
   it("jedna kampanja na dva raila: italk (Gnosis) i italk-sandbox (Chiado)", () => {
     expect(BETA_PROJECTS).toEqual([CAMPAIGN_PROD]);
-    expect(CAMPAIGN_PROD.campaignId).toBe("mpt-crowdfunding");
+    expect(CAMPAIGN_PROD.campaignId).toBe("mpt-crowdfunding-prod");
     expect(CAMPAIGN_SANDBOX.campaignId).toBe("mpt-crowdfunding");
     expect(CAMPAIGN_PROD.rail).toBe(RAIL_ITALK);
     expect(CAMPAIGN_SANDBOX.rail).toBe(RAIL_ITALK_SANDBOX);
@@ -122,10 +122,12 @@ describe("support: kampanja razvoja MPT-a", () => {
       expect(p.safe?.toLowerCase()).not.toBe(RAIL_SAFE_ADDRESS.toLowerCase());
     }
   });
-  it("sandbox Safe je registriran i naplativ; potpisnici 2 od 3", () => {
-    expect(isPayable(CAMPAIGN_SANDBOX)).toBe(true);
-    expect(CAMPAIGN_SANDBOX.signers?.threshold).toBe(2);
-    expect(CAMPAIGN_SANDBOX.signers?.owners).toHaveLength(3);
+  it("oba Safea su registrirana i naplativa; potpisnici 2 od 3", () => {
+    for (const p of [CAMPAIGN_PROD, CAMPAIGN_SANDBOX]) {
+      expect(isPayable(p)).toBe(true);
+      expect(p.signers?.threshold).toBe(2);
+      expect(p.signers?.owners).toHaveLength(3);
+    }
   });
 });
 

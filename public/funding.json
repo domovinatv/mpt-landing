@@ -34,6 +34,12 @@
         "type": "bank",
         "address": "ITalk d.o.o., IX. Južna obala 20, 10000 Zagreb, Croatia. IBAN EE70 7777 0001 6292 1128 (Monerium).",
         "description": "SEPA transfer in EUR to ITalk d.o.o.'s Monerium IBAN. Monerium mints the received euros as EURe directly into ITalk's Safe on Gnosis Chain, the same rail MPT runs on."
+      },
+      {
+        "guid": "mpt-support-campaign",
+        "type": "other",
+        "address": "https://mpt.hr/en/support",
+        "description": "Pay MPT's own development through MPT: a SEPA transfer with a payment-intent reference (EPC QR) is minted by Monerium as EURe directly into a dedicated campaign Safe on Gnosis Chain (0x022aA53B825054e47e99aa104FbA1E0ce293a47F, 2-of-3 owners). The page shows the total and payments live, with a signed payment receipt. Voluntary support for development, not an investment and not a donation."
       }
     ],
     "plans": [
@@ -55,7 +61,7 @@
         "amount": 0,
         "currency": "EUR",
         "frequency": "one-time",
-        "channels": ["italk-bank"]
+        "channels": ["italk-bank", "mpt-support-campaign"]
       }
     ]
   }
