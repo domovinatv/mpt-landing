@@ -279,5 +279,7 @@ prikazuje njegovu stranicu). Nakon novog builda dodaj `?v=N` jer preglednik keš
   prioritet
 - kad prvi vanjski tenant krene s pravim novcem, Shopify prođe prvi test ili GP izađe iz
   pre-pilota → ažurirati `status` u dictionaries + machine
+- ideja (13. 11. 2026., nedogovoreno): UBIK božićna kampanja (crypsmas.ubik.hr) po obrascu
+  `/support` + `/support/sandbox` — `docs/2026-11-13-ideja-ubik-bozicna-kampanja.md`
 - naplata MPT naknade (1% iznad 2.500 €/mj.) nije implementirana u backendu — tehnički
   je danas 0 %, svjesno; rješava se kasnije. Landing svejedno piše 1 % (Matija)
