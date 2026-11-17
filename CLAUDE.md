@@ -24,7 +24,8 @@ landing to mora reći, ne tvrditi „0 € iz bilo koje banke").
 
 **Cijene (Matija, 2026-10-10): kao RevenueCat** — hostani MPT besplatan do 2.500 €
 mjesečnog prometa (uplate sa statusom paid u kalendarskom mjesecu), zatim 1%; Enterprise
-po dogovoru; vlastiti MPT (self-host, MIT) 0 €. SSOT brojeva: `src/lib/mpt-pricing.ts`
+po dogovoru; vlastiti MPT (self-host, MIT) **besplatan zauvijek** — 1 % se naplaćuje samo na
+hostanom MPT-u (managed SaaS), i to se uz cijenu uvijek kaže s linkom na GitHub (17. 11. 2026.). SSOT brojeva: `src/lib/mpt-pricing.ts`
 (test `mpt-pricing.test.ts` drži copy u dictionaries usklađenim). Naplata u backendu još
 ne postoji; cjenik vrijedi za vanjske tenante.
 
