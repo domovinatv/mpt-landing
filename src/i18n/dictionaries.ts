@@ -22,7 +22,7 @@ const hr = {
 		pricing: {
 			title: "Cijene — MPT",
 			description:
-				"Kao RevenueCat: hostani MPT je besplatan do 2.500 € mjesečnog prometa, zatim 1%. Bez fiksne naknade po transakciji. Vlastiti MPT je besplatan (MIT). Kupac ne plaća ništa.",
+				"Kao RevenueCat: hostani MPT (managed SaaS) je besplatan do 2.500 € mjesečnog prometa, zatim 1%. Bez fiksne naknade po transakciji. Self-hosted MPT je besplatan zauvijek (MIT). Kupac ne plaća ništa.",
 		},
 		merchants: {
 			title: "Za trgovce — MPT",
@@ -174,7 +174,8 @@ const hr = {
 	},
 	pricingTeaser: {
 		title: "Cijene kao RevenueCat: plaćaš tek kad rasteš",
-		text: "Kupac MPT-u ne plaća ništa. Trgovac 0 € do 2.500 € mjesečnog prometa, zatim 1% — bez fiksne naknade po transakciji. Vlastiti MPT je besplatan.",
+		text: "Kupac MPT-u ne plaća ništa. Na hostanom MPT-u (managed SaaS) trgovac plaća 0 € do 2.500 € mjesečnog prometa, zatim 1% — bez fiksne naknade po transakciji.",
+		selfHosted: "Self-hosted MPT je besplatan zauvijek (MIT):",
 		link: "Pogledaj cijene",
 	},
 	trust: {
@@ -287,7 +288,7 @@ const hr = {
 			{
 				name: "Hostani MPT",
 				price: "0 €",
-				priceNote: "do 2.500 € mjesečnog prometa, zatim 1%",
+				priceNote: "managed SaaS: do 2.500 € mjesečnog prometa, zatim 1%",
 				features: [
 					"Sve funkcije: checkout intenti, EPC QR, status uživo, webhookovi",
 					"Uplate bez reference — automatsko povezivanje s intentom",
@@ -315,11 +316,11 @@ const hr = {
 			{
 				name: "Vlastiti MPT",
 				price: "0 €",
-				priceNote: "otvoreni kod, MIT licenca",
+				priceNote: "zauvijek besplatno · otvoreni kod, MIT licenca",
 				features: [
-					"Cijeli rail na GitHubu",
+					"Cijeli rail na GitHubu (github.com/domovinatv/pay.domovina.ai)",
 					"Sam vodiš infrastrukturu, Monerium račun i Safe",
-					"Bez naknade ITalku",
+					"Bez naknade ITalku, bez praga prometa",
 					"Consulting za postavljanje na upit",
 				],
 				cta: "Kod na GitHubu",
@@ -702,7 +703,7 @@ const en: typeof hr = {
 		pricing: {
 			title: "Pricing — MPT",
 			description:
-				"Like RevenueCat: hosted MPT is free up to €2,500 in monthly volume, then 1%. No fixed fee per transaction. Self-hosted MPT is free (MIT). The buyer pays nothing.",
+				"Like RevenueCat: hosted MPT (managed SaaS) is free up to €2,500 in monthly volume, then 1%. No fixed fee per transaction. Self-hosted MPT is free forever (MIT). The buyer pays nothing.",
 		},
 		merchants: {
 			title: "For merchants — MPT",
@@ -854,7 +855,8 @@ const en: typeof hr = {
 	},
 	pricingTeaser: {
 		title: "Priced like RevenueCat: you pay only when you grow",
-		text: "The buyer pays MPT nothing. The merchant pays €0 up to €2,500 in monthly volume, then 1% — no fixed fee per transaction. Self-hosted MPT is free.",
+		text: "The buyer pays MPT nothing. On hosted MPT (managed SaaS) the merchant pays €0 up to €2,500 in monthly volume, then 1% — no fixed fee per transaction.",
+		selfHosted: "Self-hosted MPT is free forever (MIT):",
 		link: "See pricing",
 	},
 	trust: {
@@ -967,7 +969,7 @@ const en: typeof hr = {
 			{
 				name: "Hosted MPT",
 				price: "€0",
-				priceNote: "up to €2,500 in monthly volume, then 1%",
+				priceNote: "managed SaaS: up to €2,500 in monthly volume, then 1%",
 				features: [
 					"Every feature: checkout intents, EPC QR, live status, webhooks",
 					"Payments without a reference — automatic intent matching",
@@ -995,11 +997,11 @@ const en: typeof hr = {
 			{
 				name: "Self-hosted MPT",
 				price: "€0",
-				priceNote: "open source, MIT license",
+				priceNote: "free forever · open source, MIT license",
 				features: [
-					"The whole rail on GitHub",
+					"The whole rail on GitHub (github.com/domovinatv/pay.domovina.ai)",
 					"You run the infrastructure, the Monerium account and the Safe",
-					"No fee to ITalk",
+					"No fee to ITalk, no volume threshold",
 					"Setup consulting on request",
 				],
 				cta: "Code on GitHub",

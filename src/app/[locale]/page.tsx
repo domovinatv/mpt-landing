@@ -250,6 +250,17 @@ function PricingTeaser({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 				<div className="max-w-2xl">
 					<h2 className="font-serif text-2xl font-semibold tracking-tight text-navy">{dict.pricingTeaser.title}</h2>
 					<p className="mt-3 leading-relaxed text-mute">{dict.pricingTeaser.text}</p>
+					<p className="mt-2 leading-relaxed text-mute">
+						{dict.pricingTeaser.selfHosted}{" "}
+						<a
+							href="https://github.com/domovinatv/pay.domovina.ai"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-semibold text-navy underline decoration-gold underline-offset-4"
+						>
+							github.com/domovinatv/pay.domovina.ai
+						</a>
+					</p>
 				</div>
 				<Link href={`/${locale}/pricing`} className={`shrink-0 ${ghostButtonCls}`}>
 					{dict.pricingTeaser.link} →
